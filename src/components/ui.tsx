@@ -11,6 +11,7 @@ import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, ArrowRightLeft, Clock 
 export function BookmakerLogo({ id, size = 'md' }: { id: BookmakerId; size?: 'sm' | 'md' }) {
   const bm = BOOKMAKERS[id];
   const [dbLogoUrl, setDbLogoUrl] = useState<string | null>(null);
+  const [logoIndex, setLogoIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -53,12 +54,16 @@ export function BookmakerLogo({ id, size = 'md' }: { id: BookmakerId; size?: 'sm
       `${base}.webp`,
     ];
   }, [bm.logoUrl, dbLogoUrl]);
-  const [logoIndex, setLogoIndex] = useState(0);
+
+  useEffect(() => {
+    setLogoIndex(0);
+  }, [logoCandidates]);
+
   const wrapperSize = size === 'sm' ? 'w-8 h-8' : 'w-10 h-10';
   const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs';
   const imageSize = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8';
   const currentLogo = logoCandidates[logoIndex];
-  const showLogo = Boolean(currentLogo);
+  const showLogo = Boolean(currentLogo && logoIndex < logoCandidates.length);
 
   return (
     <div
@@ -76,7 +81,7 @@ export function BookmakerLogo({ id, size = 'md' }: { id: BookmakerId; size?: 'sm
           className={`${imageSize} object-contain`}
           loading="lazy"
           onError={() => {
-            setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : prev));
+            setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : logoCandidates.length));
           }}
         />
       ) : (
