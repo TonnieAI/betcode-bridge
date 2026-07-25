@@ -125,7 +125,10 @@ export function ProfilePage() {
 
             {/* Subscription */}
             <div className="card p-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2"><Crown className="w-4 h-4 gold-text" /> Subscription</h3>
+              <div className="mb-4">
+                <h3 className="font-semibold flex items-center gap-2"><Crown className="w-4 h-4 gold-text" /> Subscription & Plans</h3>
+                <p className="text-xs text-gray-500 mt-1">Manage your current plan and see the available tiers from your account.</p>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {(Object.keys(PLAN_INFO) as SubscriptionPlan[]).map((plan) => {
                   const info = PLAN_INFO[plan];

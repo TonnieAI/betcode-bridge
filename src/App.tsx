@@ -15,6 +15,7 @@ import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { AdminPage } from '@/pages/AdminPage';
+import { AdminBettingCompanies } from '@/pages/AdminBettingCompanies';
 
 function App() {
   useEffect(() => {
@@ -38,6 +39,7 @@ function App() {
               <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+              <Route path="/admin/betting-companies" element={<AdminRoute><AdminBettingCompanies /></AdminRoute>} />
             </Routes>
           </main>
           <Footer />

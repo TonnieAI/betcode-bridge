@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { BOOKMAKER_LIST } from '@/lib/bookmakers';
+import { BookmakerLogo } from '@/components/ui';
 import {
   Shield, Users, Crown, Activity, BarChart3, BookOpen,
   TrendingUp, AlertCircle, Database, Key, ScrollText,
@@ -174,24 +176,34 @@ export function AdminPage() {
         )}
 
         {activeTab === 'bookmakers' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {BOOKMAKER_LIST.map((bm) => (
-              <div key={bm.id} className="card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{ background: `${bm.color}20`, color: bm.color }}>
-                    {bm.shortName}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-200">{bm.name}</p>
-                    <p className="text-xs text-gray-500">ID: {bm.id}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="badge-success text-xs">Active</span>
-                  <span className="text-xs text-gray-500">Plug-in Module</span>
-                </div>
+          <div className="space-y-4">
+            <div className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-200">Manage betting companies</p>
+                <p className="text-xs text-gray-500">Add, edit, and delete companies including logo uploads from one place.</p>
               </div>
-            ))}
+              <Link to="/admin/betting-companies" className="btn-primary text-sm self-start md:self-auto">
+                Open Management Module
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {BOOKMAKER_LIST.map((bm) => (
+                <div key={bm.id} className="card p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <BookmakerLogo id={bm.id} />
+                    <div>
+                      <p className="font-medium text-gray-200">{bm.name}</p>
+                      <p className="text-xs text-gray-500">ID: {bm.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="badge-success text-xs">Active</span>
+                    <span className="text-xs text-gray-500">Plug-in Module</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

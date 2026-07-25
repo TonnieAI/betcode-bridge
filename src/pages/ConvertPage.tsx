@@ -161,6 +161,18 @@ export function ConvertPage() {
 
         {/* ── Conversion form ─────────────────────────────────────── */}
         <div className="card p-6 md:p-8 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <p className="text-xs text-gray-400">Selected bookmakers</p>
+              <p className="text-sm text-gray-500">Logos are shown here so you can confirm the pair before converting.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <BookmakerBadge id={source} size="sm" />
+              <ArrowRight className="w-4 h-4 text-gray-500" />
+              <BookmakerBadge id={destination} size="sm" />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end mb-6">
             <div className="md:col-span-3 flex items-center justify-between gap-3 mb-1">
               <p className="text-xs text-gray-400">Bookmaker visibility</p>
