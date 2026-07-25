@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Building2, CheckCircle, CircleX } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle, XCircle } from 'lucide-react';
 import { CompanyForm } from '@/components/bettingCompanies/CompanyForm';
 import { CompanyList } from '@/components/bettingCompanies/CompanyList';
 import { DeleteConfirmation } from '@/components/bettingCompanies/DeleteConfirmation';
@@ -146,7 +146,7 @@ export function AdminBettingCompanies() {
 
         {errorMessage && (
           <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300 flex items-center gap-2">
-            <CircleX className="w-4 h-4" />
+            <XCircle className="w-4 h-4" />
             {errorMessage}
           </div>
         )}
