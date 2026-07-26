@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/msport.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const msportDecoder: BetCodeDecoder = {
   bookmaker: 'msport',
   validateCode(code: string): boolean {

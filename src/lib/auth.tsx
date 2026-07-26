@@ -9,7 +9,12 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: string | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    username: string,
+    options: { country: string; currency: string; language: 'en' | 'pt' | 'fr' }
+  ) => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -48,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: u.email ?? '',
       username: data.username,
       avatarUrl: data.avatar_url,
+      country: data.country,
+      currency: data.currency,
+      language: data.language,
       plan: data.plan as SubscriptionPlan,
       conversionsThisMonth: data.conversions_this_month,
       conversionLimit: PLAN_LIMITS[data.plan as SubscriptionPlan] ?? data.conversion_limit,
@@ -86,28 +94,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }
 
-  async function signUp(email: string, password: string, username: string) {
+  async function signUp(
+    email: string,
+    password: string,
+    username: string,
+    options: { country: string; currency: string; language: 'en' | 'pt' | 'fr' }
+  ) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username } },
+      options: {
+        data: {
+          username,
+          country: options.country,
+          currency: options.currency,
+          language: options.language,
+        },
+      },
     });
     if (error) return { error: error.message };
     if (data.user) {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         username,
-        plan: 'free',
-        role: 'user',
-        conversions_this_month: 0,
-        conversion_limit: PLAN_LIMITS.free,
+        country: options.country,
+        currency: options.currency,
+        language: options.language,
       });
     }
     return { error: null };
   }
 
   async function requestPasswordReset(email: string) {
-    const redirectTo = `${window.location.origin}/reset-password`;
+    const configuredAppUrl = (import.meta.env.VITE_APP_URL as string | undefined)?.trim();
+    const appUrl = configuredAppUrl || window.location.origin;
+    const redirectTo = `${appUrl.replace(/\/+$/, '')}/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     return { error: error?.message ?? null };
   }

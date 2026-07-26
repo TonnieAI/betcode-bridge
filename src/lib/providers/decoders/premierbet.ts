@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/premierbet.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const premierbetDecoder: BetCodeDecoder = {
   bookmaker: 'premierbet',
   validateCode(code: string): boolean {

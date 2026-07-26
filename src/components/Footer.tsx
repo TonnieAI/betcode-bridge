@@ -1,9 +1,31 @@
 // src/components/Footer.tsx
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { ArrowLeftRight, Twitter, Facebook, Instagram } from 'lucide-react';
-import { BOOKMAKER_LIST } from '@/lib/bookmakers';
+import { getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
 
 export function Footer() {
+  const [bookmakers, setBookmakers] = useState<GlobalBookmaker[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const records = await getGlobalBookmakers(true);
+        if (!mounted) return;
+        setBookmakers(records.slice(0, 6));
+      } catch {
+        if (!mounted) return;
+        setBookmakers([]);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <footer className="bg-[#0a0e1a] border-t border-[#1e293b] mt-20">
       <div className="section-padding py-12">
@@ -17,7 +39,7 @@ export function Footer() {
               <span className="text-lg font-bold">Bet<span className="gold-text">Code</span> Bridge</span>
             </Link>
             <p className="text-sm text-gray-400 leading-relaxed">
-              The premier bet slip conversion platform for sportsbooks. Translate codes between bookmakers instantly.
+              A global bet slip conversion platform. Convert codes between supported bookmakers worldwide.
             </p>
             <div className="flex gap-3 mt-4">
               <a href="#" className="w-9 h-9 rounded-lg bg-[#1e293b] flex items-center justify-center text-gray-400 hover:text-[#d4af37] transition-colors">
@@ -46,12 +68,13 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-gray-200 mb-4">Bookmakers</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              {BOOKMAKER_LIST.slice(0, 6).map((b) => (
-                <li key={b.id} className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-                  {b.name}
+              {bookmakers.map((bookmaker) => (
+                <li key={bookmaker.id} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#d4af37]" />
+                  {bookmaker.name}
                 </li>
               ))}
+              {bookmakers.length === 0 && <li>Global catalog loading...</li>}
             </ul>
           </div>
 

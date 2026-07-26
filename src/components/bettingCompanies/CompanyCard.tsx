@@ -1,5 +1,6 @@
 import type { BettingCompany } from '@/lib/bettingCompanyTypes';
 import { Pencil, Trash2, Globe, CalendarDays } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 interface CompanyCardProps {
   company: BettingCompany;
@@ -9,6 +10,8 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company, onEdit, onDelete, deleting }: CompanyCardProps) {
+  const { language } = useI18n();
+
   return (
     <article className="card p-4 sm:p-5 flex flex-col gap-4">
       <div className="flex items-start gap-3">
@@ -47,7 +50,7 @@ export function CompanyCard({ company, onEdit, onDelete, deleting }: CompanyCard
 
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-gray-500" />
-          <span>{new Date(company.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          <span>{new Date(company.createdAt).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
         </div>
       </div>
 

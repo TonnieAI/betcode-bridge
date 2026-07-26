@@ -1,10 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
+import { SUPPORTED_LANGUAGES } from '@/lib/geo';
 import { Menu, X, ChevronDown, LogOut, User as UserIcon, LayoutDashboard, History, ArrowLeftRight, Shield } from 'lucide-react';
 
 export function Navbar() {
   const { user, profile, signOut } = useAuth();
+  const { t, language, setLanguage } = useI18n();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -29,15 +32,30 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1">
-          <Link to="/" className="btn-ghost">Home</Link>
-          <Link to="/convert" className="btn-ghost">Convert</Link>
-          {user && <Link to="/dashboard" className="btn-ghost">Dashboard</Link>}
-          {user && <Link to="/history" className="btn-ghost">History</Link>}
-          {profile?.role === 'admin' && <Link to="/admin" className="btn-ghost">Admin</Link>}
+          <Link to="/" className="btn-ghost">{t('nav.home', 'Home')}</Link>
+          <Link to="/convert" className="btn-ghost">{t('nav.convert', 'Convert')}</Link>
+          {user && <Link to="/dashboard" className="btn-ghost">{t('nav.dashboard', 'Dashboard')}</Link>}
+          {user && <Link to="/history" className="btn-ghost">{t('nav.history', 'History')}</Link>}
+          {profile?.role === 'admin' && <Link to="/admin" className="btn-ghost">{t('nav.admin', 'Admin')}</Link>}
         </div>
 
         {/* Auth area */}
         <div className="hidden md:flex items-center gap-3">
+          <select
+            value={language}
+            onChange={(event) => {
+              void setLanguage(event.target.value as 'en' | 'pt' | 'fr');
+            }}
+            className="input-field h-9 py-0 text-xs min-w-[120px]"
+            aria-label={t('register.language', 'Language')}
+          >
+            {SUPPORTED_LANGUAGES.map((entry) => (
+              <option key={entry.code} value={entry.code}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+
           {user ? (
             <div className="relative">
               <button
@@ -60,30 +78,30 @@ export function Navbar() {
                   onMouseLeave={() => setUserMenuOpen(false)}
                 >
                   <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#1e293b] transition-colors" onClick={() => setUserMenuOpen(false)}>
-                    <UserIcon className="w-4 h-4 text-gray-400" /> Profile
+                    <UserIcon className="w-4 h-4 text-gray-400" /> {t('nav.profile', 'Profile')}
                   </Link>
                   <Link to="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#1e293b] transition-colors" onClick={() => setUserMenuOpen(false)}>
-                    <LayoutDashboard className="w-4 h-4 text-gray-400" /> Dashboard
+                    <LayoutDashboard className="w-4 h-4 text-gray-400" /> {t('nav.dashboard', 'Dashboard')}
                   </Link>
                   <Link to="/history" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#1e293b] transition-colors" onClick={() => setUserMenuOpen(false)}>
-                    <History className="w-4 h-4 text-gray-400" /> History
+                    <History className="w-4 h-4 text-gray-400" /> {t('nav.history', 'History')}
                   </Link>
                   {profile?.role === 'admin' && (
                     <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#1e293b] transition-colors" onClick={() => setUserMenuOpen(false)}>
-                      <Shield className="w-4 h-4 text-gray-400" /> Admin Panel
+                      <Shield className="w-4 h-4 text-gray-400" /> {t('nav.admin', 'Admin')}
                     </Link>
                   )}
                   <div className="border-t border-[#1e293b] my-1" />
                   <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-                    <LogOut className="w-4 h-4" /> Sign Out
+                    <LogOut className="w-4 h-4" /> {t('nav.signOut', 'Sign Out')}
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost">Login</Link>
-              <Link to="/register" className="btn-primary text-sm">Get Started</Link>
+              <Link to="/login" className="btn-ghost">{t('nav.login', 'Login')}</Link>
+              <Link to="/register" className="btn-primary text-sm">{t('nav.getStarted', 'Get Started')}</Link>
             </>
           )}
         </div>
@@ -97,19 +115,33 @@ export function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden bg-[#0a0e1a] border-b border-[#1e293b] px-4 py-4 space-y-2">
-          <Link to="/" className="block btn-ghost" onClick={() => setMobileOpen(false)}>Home</Link>
-          <Link to="/convert" className="block btn-ghost" onClick={() => setMobileOpen(false)}>Convert</Link>
-          {user && <Link to="/dashboard" className="block btn-ghost" onClick={() => setMobileOpen(false)}>Dashboard</Link>}
-          {user && <Link to="/history" className="block btn-ghost" onClick={() => setMobileOpen(false)}>History</Link>}
-          {user && <Link to="/profile" className="block btn-ghost" onClick={() => setMobileOpen(false)}>Profile</Link>}
-          {profile?.role === 'admin' && <Link to="/admin" className="block btn-ghost" onClick={() => setMobileOpen(false)}>Admin</Link>}
+          <Link to="/" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.home', 'Home')}</Link>
+          <Link to="/convert" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.convert', 'Convert')}</Link>
+          {user && <Link to="/dashboard" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.dashboard', 'Dashboard')}</Link>}
+          {user && <Link to="/history" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.history', 'History')}</Link>}
+          {user && <Link to="/profile" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.profile', 'Profile')}</Link>}
+          {profile?.role === 'admin' && <Link to="/admin" className="block btn-ghost" onClick={() => setMobileOpen(false)}>{t('nav.admin', 'Admin')}</Link>}
+          <select
+            value={language}
+            onChange={(event) => {
+              void setLanguage(event.target.value as 'en' | 'pt' | 'fr');
+            }}
+            className="input-field h-9 py-0 text-xs w-full"
+            aria-label={t('register.language', 'Language')}
+          >
+            {SUPPORTED_LANGUAGES.map((entry) => (
+              <option key={entry.code} value={entry.code}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
           <div className="border-t border-[#1e293b] pt-2">
             {user ? (
-              <button onClick={handleSignOut} className="w-full text-left px-4 py-2 text-red-400">Sign Out</button>
+              <button onClick={handleSignOut} className="w-full text-left px-4 py-2 text-red-400">{t('nav.signOut', 'Sign Out')}</button>
             ) : (
               <div className="flex gap-2">
-                <Link to="/login" className="btn-secondary flex-1 text-center text-sm" onClick={() => setMobileOpen(false)}>Login</Link>
-                <Link to="/register" className="btn-primary flex-1 text-center text-sm" onClick={() => setMobileOpen(false)}>Get Started</Link>
+                <Link to="/login" className="btn-secondary flex-1 text-center text-sm" onClick={() => setMobileOpen(false)}>{t('nav.login', 'Login')}</Link>
+                <Link to="/register" className="btn-primary flex-1 text-center text-sm" onClick={() => setMobileOpen(false)}>{t('nav.getStarted', 'Get Started')}</Link>
               </div>
             )}
           </div>

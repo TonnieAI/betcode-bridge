@@ -1,18 +1,32 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { COUNTRY_OPTIONS, SUPPORTED_LANGUAGES, getCountryOption, type SupportedCurrency } from '@/lib/geo';
+import { useI18n } from '@/lib/i18n';
 import { ArrowLeftRight, Mail, Lock, User, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 
 export function RegisterPage() {
   const { signUp } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [country, setCountry] = useState('US');
+  const [language, setLanguage] = useState<'en' | 'pt' | 'fr'>('en');
+  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const selectedCountry = getCountryOption(country);
+
+  function handleCountryChange(nextCountry: string) {
+    setCountry(nextCountry);
+    const option = getCountryOption(nextCountry);
+    setCurrency(option.defaultCurrency as SupportedCurrency);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +42,11 @@ export function RegisterPage() {
     }
 
     setLoading(true);
-    const { error } = await signUp(email, password, username);
+    const { error } = await signUp(email, password, username, {
+      country,
+      currency,
+      language,
+    });
     setLoading(false);
 
     if (error) {
@@ -50,8 +68,8 @@ export function RegisterPage() {
           <span className="text-xl font-bold">Bet<span className="gold-text">Code</span> Bridge</span>
         </Link>
 
-        <h1 className="text-2xl font-bold text-center mb-1">Create your account</h1>
-        <p className="text-sm text-gray-400 text-center mb-6">Start converting bet slips across 10 bookmakers</p>
+        <h1 className="text-2xl font-bold text-center mb-1">{t('register.title', 'Create your account')}</h1>
+        <p className="text-sm text-gray-400 text-center mb-6">{t('register.subtitle', 'Start converting bet slips worldwide')}</p>
 
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 mb-4">
@@ -88,6 +106,45 @@ export function RegisterPage() {
                 placeholder="you@example.com"
                 className="input-field pl-10"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">{t('register.country', 'Country')}</label>
+              <select
+                value={country}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="input-field"
+              >
+                {COUNTRY_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code}>{option.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">{t('register.language', 'Language')}</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as 'en' | 'pt' | 'fr')}
+                className="input-field"
+              >
+                {SUPPORTED_LANGUAGES.map((entry) => (
+                  <option key={entry.code} value={entry.code}>{entry.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">{t('register.currency', 'Currency')}</label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
+                className="input-field"
+              >
+                {selectedCountry.supportedCurrencies.map((supportedCurrency) => (
+                  <option key={supportedCurrency} value={supportedCurrency}>{supportedCurrency}</option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -1,0 +1,84 @@
+﻿{
+    "email":  "sec.verify.1785024124215@example.com",
+    "userId":  "92f70c81-c8d2-4e99-b12e-e062e50a18f8",
+    "normal_user_checks":  {
+                               "role_patch":  {
+                                                  "status":  403,
+                                                  "body":  "{\"code\":\"42501\",\"details\":\"Only username, avatar_url, preferences, and notification_settings can be changed by this user.\",\"hint\":\"Use privileged backend/service-role workflows for role, plan, quota, and subscription fields.\",\"message\":\"PROFILE_UPDATE_FORBIDDEN\"}"
+                                              },
+                               "plan_patch":  {
+                                                  "status":  403,
+                                                  "body":  "{\"code\":\"42501\",\"details\":\"Only username, avatar_url, preferences, and notification_settings can be changed by this user.\",\"hint\":\"Use privileged backend/service-role workflows for role, plan, quota, and subscription fields.\",\"message\":\"PROFILE_UPDATE_FORBIDDEN\"}"
+                                              },
+                               "conversion_limit_patch":  {
+                                                              "status":  403,
+                                                              "body":  "{\"code\":\"42501\",\"details\":\"Only username, avatar_url, preferences, and notification_settings can be changed by this user.\",\"hint\":\"Use privileged backend/service-role workflows for role, plan, quota, and subscription fields.\",\"message\":\"PROFILE_UPDATE_FORBIDDEN\"}"
+                                                          },
+                               "conversions_this_month_patch":  {
+                                                                    "status":  403,
+                                                                    "body":  "{\"code\":\"42501\",\"details\":\"Only username, avatar_url, preferences, and notification_settings can be changed by this user.\",\"hint\":\"Use privileged backend/service-role workflows for role, plan, quota, and subscription fields.\",\"message\":\"PROFILE_UPDATE_FORBIDDEN\"}"
+                                                                },
+                               "safe_username_patch":  {
+                                                           "status":  204,
+                                                           "body":  [
+
+                                                                    ]
+                                                       },
+                               "safe_avatar_patch":  {
+                                                         "status":  204,
+                                                         "body":  [
+
+                                                                  ]
+                                                     },
+                               "safe_preferences_patch":  {
+                                                              "status":  204,
+                                                              "body":  [
+
+                                                                       ]
+                                                          },
+                               "safe_notification_settings_patch":  {
+                                                                        "status":  204,
+                                                                        "body":  [
+
+                                                                                 ]
+                                                                    },
+                               "rpc_sync_denied":  {
+                                                       "status":  204,
+                                                       "body":  [
+
+                                                                ]
+                                                   },
+                               "rpc_expire_denied":  {
+                                                         "status":  200,
+                                                         "body":  "0"
+                                                     },
+                               "rpc_cancel_denied":  {
+                                                         "status":  400,
+                                                         "body":  ""
+                                                     }
+                           },
+    "service_role_checks":  {
+                                "protected_profile_patch":  {
+                                                                "status":  204,
+                                                                "body":  [
+
+                                                                         ]
+                                                            },
+                                "subscriptions_insert":  null,
+                                "rpc_sync":  null,
+                                "rpc_expire":  null,
+                                "rpc_cancel":  null
+                            },
+    "profile_before":  {
+                           "status":  200,
+                           "body":  "[{\"id\":\"92f70c81-c8d2-4e99-b12e-e062e50a18f8\",\"username\":\"secverify\",\"avatar_url\":null,\"role\":\"user\",\"plan\":\"free\",\"conversion_limit\":10,\"conversions_this_month\":0,\"preferences\":{},\"notification_settings\":{}}]"
+                       },
+    "profile_after":  {
+                          "status":  200,
+                          "body":  "[{\"id\":\"92f70c81-c8d2-4e99-b12e-e062e50a18f8\",\"username\":\"secverify-safe\",\"avatar_url\":\"https://example.com/ok.png\",\"role\":\"admin\",\"plan\":\"free\",\"conversion_limit\":10,\"conversions_this_month\":5,\"preferences\":{\"theme\": \"light\"},\"notification_settings\":{\"marketing\": false}}]"
+                      },
+    "subscriptions_after":  {
+                                "status":  200,
+                                "body":  "[]"
+                            }
+}

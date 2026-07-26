@@ -152,11 +152,72 @@ export interface NormalizedMarket {
 
 export type SubscriptionPlan = 'free' | 'basic' | 'pro' | 'enterprise';
 
+export type BillingCycle = 'monthly' | 'yearly';
+
+export type SubscriptionStatus = 'active' | 'pending' | 'failed' | 'cancelled' | 'expired';
+
+export type PaymentStatus = 'pending' | 'success' | 'failed' | 'cancelled' | 'refunded';
+
+export interface SubscriptionPlanDefinition {
+  id: SubscriptionPlan;
+  name: string;
+  price: number;
+  currency: string;
+  country?: string;
+  currency_symbol?: string;
+  payment_provider?: 'paystack' | 'flutterwave' | 'stripe';
+  localized_price?: number | null;
+  duration: BillingCycle;
+  usage_limit: number;
+  features: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionRecord {
+  id: string;
+  user_id: string;
+  plan_id: SubscriptionPlan;
+  payment_provider: 'paystack' | 'flutterwave' | 'stripe';
+  transaction_reference: string;
+  subscription_status: SubscriptionStatus;
+  amount: number;
+  currency: string;
+  billing_cycle: BillingCycle;
+  start_date: string | null;
+  expiry_date: string | null;
+  cancel_at_period_end: boolean;
+  cancelled_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  transaction_id: string | null;
+  gateway_reference: string;
+  amount: number;
+  status: PaymentStatus;
+  payment_method: string | null;
+  payment_provider: 'paystack' | 'flutterwave' | 'stripe';
+  currency: string;
+  paid_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   username: string;
   avatarUrl?: string;
+  country: string;
+  currency: string;
+  language: 'en' | 'pt' | 'fr';
   plan: SubscriptionPlan;
   conversionsThisMonth: number;
   conversionLimit: number;

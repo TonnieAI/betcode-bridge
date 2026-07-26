@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/merrybet.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const merrybetDecoder: BetCodeDecoder = {
   bookmaker: 'merrybet',
   validateCode(code: string): boolean {

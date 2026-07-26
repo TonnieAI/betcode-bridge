@@ -1,4 +1,11 @@
 import { getDecoder } from './providers/registry';
+import type {
+  BetCodeDecoder,
+  BookmakerId,
+  ConversionResult,
+  ConvertedSelection,
+  DecodedBetSlip,
+} from './types';
 
 export async function convertBetCode(
   sourceBookmaker: BookmakerId,

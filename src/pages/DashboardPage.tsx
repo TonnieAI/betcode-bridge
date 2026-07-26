@@ -9,9 +9,11 @@ import {
   Activity, BarChart3, Calendar, Zap, ArrowLeftRight, Trash2,
 } from 'lucide-react';
 import { BookmakerBadge, ConversionPercentage, EmptyState, LoadingSpinner } from '@/components/ui';
+import { useI18n } from '@/lib/i18n';
 
 export function DashboardPage() {
   const { user, profile } = useAuth();
+  const { language, t } = useI18n();
   const navigate = useNavigate();
   const [conversions, setConversions] = useState<ConversionRecord[]>([]);
   const [favorites, setFavorites] = useState<FavoritePair[]>([]);
@@ -84,8 +86,8 @@ export function DashboardPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-400">Welcome back, {profile?.username ?? 'User'}</p>
+            <h1 className="text-2xl md:text-3xl font-bold">{t('nav.dashboard', 'Dashboard')}</h1>
+            <p className="text-gray-400">{t('dashboard.welcome', 'Welcome back')}, {profile?.username ?? 'User'}</p>
           </div>
           <Link to="/convert" className="btn-primary text-sm flex items-center gap-2 self-start">
             <Plus className="w-4 h-4" />
@@ -146,7 +148,7 @@ export function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-3 ml-3">
                       <div className="hidden sm:block w-24"><ConversionPercentage percentage={c.conversionPercentage} /></div>
-                      <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}</span>
+                      <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString(language, { month: 'short', day: 'numeric' })}</span>
                     </div>
                   </div>
                 ))}

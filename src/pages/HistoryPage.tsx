@@ -8,9 +8,11 @@ import {
   Search, Trash2, Download, ArrowRight, Filter, X, Eye, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { BookmakerBadge, ConversionPercentage, EmptyState, LoadingSpinner } from '@/components/ui';
+import { useI18n } from '@/lib/i18n';
 
 export function HistoryPage() {
   const { user } = useAuth();
+  const { language, t } = useI18n();
   const [records, setRecords] = useState<ConversionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -88,8 +90,8 @@ export function HistoryPage() {
       <div className="section-padding py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Conversion History</h1>
-            <p className="text-gray-400">Search, filter, export, and manage your past conversions.</p>
+            <h1 className="text-2xl md:text-3xl font-bold">{t('history.title', 'Conversion History')}</h1>
+            <p className="text-gray-400">{t('history.subtitle', 'Search, filter, export, and manage your past conversions.')}</p>
           </div>
           <div className="flex gap-2">
             <button onClick={handleExport} disabled={filtered.length === 0} className="btn-secondary text-sm flex items-center gap-2 disabled:opacity-50">
@@ -159,7 +161,7 @@ export function HistoryPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
-                        {new Date(r.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(r.createdAt).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-4 py-3 text-center hidden sm:table-cell">
                         <span className="text-green-400">{r.matchedCount}</span>
@@ -198,7 +200,7 @@ export function HistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRecord(null)}>
           <div className="card max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Conversion Details</h3>
+              <h3 className="text-lg font-semibold">{t('history.details', 'Conversion Details')}</h3>
               <button onClick={() => setSelectedRecord(null)} className="p-1.5 rounded hover:bg-[#1e293b] text-gray-400"><X className="w-5 h-5" /></button>
             </div>
             <div className="flex items-center gap-3 mb-4 flex-wrap">

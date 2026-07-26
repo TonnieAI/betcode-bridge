@@ -33,7 +33,7 @@ export const BOOKMAKERS: Record<BookmakerId, Bookmaker> = {
   },
   '1xbet': {
     id: '1xbet',
-    name: '1xBet Nigeria',
+    name: '1xBet',
     shortName: '1X',
     color: '#0a6cff',
     website: 'https://1xbet.ng',
@@ -93,7 +93,7 @@ export const BOOKMAKERS: Record<BookmakerId, Bookmaker> = {
   },
   premierbet: {
     id: 'premierbet',
-    name: 'Premier Bet Nigeria',
+    name: 'Premier Bet',
     shortName: 'PB',
     color: '#c8102e',
     website: 'https://premierbet.com',

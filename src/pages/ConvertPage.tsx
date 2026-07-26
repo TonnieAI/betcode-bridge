@@ -12,9 +12,11 @@ import {
 } from 'lucide-react';
 import { BookmakerBadge, StatusBadge, ConversionPercentage, LoadingSpinner } from '@/components/ui';
 import { isCodeExpired } from '@/lib/conversionEngine';
+import { useI18n } from '@/lib/i18n';
 
 export function ConvertPage() {
   const { user, profile, refreshProfile } = useAuth();
+  const { language, t } = useI18n();
   const navigate = useNavigate();
 
   const [source, setSource] = useState<BookmakerId>('bet9ja');
@@ -51,43 +53,33 @@ export function ConvertPage() {
   }, [source, destination, filteredBookmakers, hasAvailableBookmakers]);
 
   async function handleConvert() {
-  console.log('handleConvert called'); // Add this line
   setError(null);
   setResult(null);
   setSaved(false);
   if (!code.trim()) {
-    console.log('No code entered'); // Add this line
     setError('Please enter a bet code.');
     return;
   }
   if (source === destination) {
-    console.log('Source and destination are the same'); // Add this line
     setError('Source and destination bookmaker must be different.');
     return;
   }
   const decoder = getDecoder(source);
-  console.log('Decoder:', decoder); // Add this line
   if (!decoder) {
-    console.log('No decoder found for source'); // Add this line
     setError(`No decoder registered for bookmaker: ${source}.`);
     return;
   }
   if (isCodeExpired(code.trim(), decoder)) {
-    console.log('Code is expired'); // Add this line
     setError('Bet code has expired. Codes are valid for 24 hours.');
     return;
   }
   setLoading(true);
   try {
-    console.log('About to convert code'); // Add this line
     const res = await convertBetCode(source, destination, code.trim());
-    console.log('Conversion result:', res); // Add this line
     setResult(res);
   } catch (e) {
-    console.error('Conversion error:', e); // Add this line
     setError(e instanceof Error ? e.message : 'Conversion failed. Please try again.');
   } finally {
-    console.log('Conversion completed'); // Add this line
     setLoading(false);
   }
 }
@@ -156,8 +148,8 @@ export function ConvertPage() {
   return (
     <div className="pt-16 min-h-screen">
       <div className="section-padding py-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Convert Bet Slip</h1>
-        <p className="text-gray-400 mb-8">Enter a bet code and select source and destination bookmakers.</p>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">{t('convert.title', 'Convert Bet Slip')}</h1>
+        <p className="text-gray-400 mb-8">{t('convert.subtitle', 'Enter a bet code and select source and destination bookmakers.')}</p>
 
         {/* ── Conversion form ─────────────────────────────────────── */}
         <div className="card p-6 md:p-8 mb-8">
@@ -289,9 +281,16 @@ export function ConvertPage() {
           </div>
 
           {reachedLimit && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-400">
-              <AlertCircle className="w-4 h-4" />
-              You've reached your monthly conversion limit ({profile?.conversionLimit}). Upgrade your plan to continue.
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-400">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                You've reached your monthly conversion limit ({profile?.conversionLimit}). Upgrade your plan to continue.
+              </div>
+              {user && (
+                <button onClick={() => navigate('/profile')} className="btn-secondary text-xs px-3 py-2">
+                  Upgrade Plan
+                </button>
+              )}
             </div>
           )}
 
@@ -401,9 +400,7 @@ export function ConvertPage() {
             {/* Selections table */}
             <div className="card overflow-hidden">
               <div className="p-5 border-b border-[#1e293b]">
-                <h3 className="font-semibold">
-  Selections ({result.selections?.length ?? 0})
-</h3>
+                <h3 className="font-semibold">{t('convert.selections', 'Selections')} ({result.selections?.length ?? 0})</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -428,9 +425,9 @@ export function ConvertPage() {
                         </td>
                         <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{sel.league}</td>
                         <td className="px-4 py-3 text-gray-400 hidden lg:table-cell">
-                          {new Date(sel.kickoff).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
+                          {new Date(sel.kickoff).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
                           {' '}
-                          {new Date(sel.kickoff).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(sel.kickoff).toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="px-4 py-3 text-gray-300">{sel.market}</td>
                         <td className="px-4 py-3 text-gray-300">{sel.selection}</td>

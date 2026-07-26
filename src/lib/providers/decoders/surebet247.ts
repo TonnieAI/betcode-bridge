@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/surebet247.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const surebet247Decoder: BetCodeDecoder = {
   bookmaker: 'surebet247',
   validateCode(code: string): boolean {

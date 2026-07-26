@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/bangbet.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const bangbetDecoder: BetCodeDecoder = {
   bookmaker: 'bangbet',
   validateCode(code: string): boolean {

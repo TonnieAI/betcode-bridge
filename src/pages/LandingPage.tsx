@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BOOKMAKER_LIST } from '@/lib/bookmakers';
-import { BookmakerLogo } from '@/components/ui';
+import { useI18n } from '@/lib/i18n';
+import { getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
 import {
   ArrowLeftRight, Zap, Shield, Search, BarChart3, Bell, Star,
   Check, ChevronDown, TrendingUp, Clock, Layers, Lock,
 } from 'lucide-react';
 
 const features = [
-  { icon: Zap, title: 'Instant Conversion', desc: 'Decode and recreate bet slips across 10 Nigerian bookmakers in seconds.' },
+  { icon: Zap, title: 'Instant Conversion', desc: 'Decode and recreate bet slips across supported global bookmakers in seconds.' },
   { icon: Shield, title: 'Provider Abstraction', desc: 'Each bookmaker is a plug-in module. Official APIs connect without frontend changes.' },
   { icon: Search, title: 'Smart Matching', desc: 'Alias databases normalize team names and markets across all bookmakers.' },
   { icon: BarChart3, title: 'Odds Comparison', desc: 'See original vs destination odds with percentage changes highlighted.' },
@@ -23,17 +23,44 @@ const steps = [
   { num: '04', title: 'Reconstructed Slip', desc: 'Review your converted slip with full transparency, then recreate it manually.' },
 ];
 
+const pricingPreview = [
+  { name: 'Free', price: 'From $0', limit: '10 conversions / month', cta: 'Create account' },
+  { name: 'Basic', price: 'Localized pricing', limit: '50 conversions / month', cta: 'Sign in to subscribe' },
+  { name: 'Premium', price: 'Localized pricing', limit: '500 conversions / month', cta: 'Sign in to subscribe' },
+];
+
 const faqs = [
   { q: 'Does BetCode Bridge place bets for me?', a: 'No. BetCode Bridge only translates bet slips between bookmakers. After conversion, you review the reconstructed slip and manually recreate it on the destination bookmaker. We never place bets on your behalf.' },
   { q: 'How does the conversion work?', a: 'Each bookmaker has a decoder module that reads the bet code and outputs a normalized structure. Our mapping engine then matches fixtures, markets, and selections against the destination bookmaker using alias databases for team names and market types.' },
   { q: 'What happens when a market is unavailable?', a: 'We clearly indicate when a market or selection cannot be matched at the destination bookmaker. We never guess or approximate — unavailable selections are flagged so you can make informed decisions.' },
   { q: 'Can I use official bookmaker APIs?', a: 'Yes. The architecture is built around a provider interface. When official APIs or licensed data feeds become available, each bookmaker\'s decoder is updated to call that API. The frontend and conversion pipeline remain unchanged.' },
-  { q: 'Which bookmakers are supported?', a: 'Currently we support Bet9ja, SportyBet, BetKing, 1xBet Nigeria, NairaBet, MerryBet, BangBet, MSport, SureBet247, and Premier Bet Nigeria. Additional bookmakers can be added as plug-in modules.' },
+  { q: 'Which bookmakers are supported?', a: 'We support a growing catalog of bookmakers across regions including the United Kingdom, United States, South Africa, Ghana, Kenya, and Mozambique. Additional bookmakers are added through plug-in provider modules and catalog updates.' },
   { q: 'Is my data secure?', a: 'Yes. We use JWT authentication, password hashing, rate limiting, and row-level security. Your conversion history is private to your account.' },
 ];
 
 export function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [bookmakers, setBookmakers] = useState<GlobalBookmaker[]>([]);
+  const { t } = useI18n();
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const data = await getGlobalBookmakers(true);
+        if (!mounted) return;
+        setBookmakers(data);
+      } catch {
+        if (!mounted) return;
+        setBookmakers([]);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="pt-16">
@@ -47,27 +74,25 @@ export function LandingPage() {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1e293b] border border-[#2a3a52] text-sm text-gray-300 mb-6 animate-fade-in-up">
               <Zap className="w-3.5 h-3.5 gold-text" />
-              10 Nigerian bookmakers supported
+              {t('landing.heroBadge', 'Supported bookmakers worldwide')}
             </div>
 
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              Convert Bet Slips
+              {t('landing.heroTitle1', 'Convert Bet Slips')}
               <br />
-              <span className="gold-text">Across Bookmakers</span>
+              <span className="gold-text">{t('landing.heroTitle2', 'Across Bookmakers')}</span>
             </h1>
 
             <p className="text-lg md:text-xl text-gray-400 leading-relaxed mb-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              Enter a bet code from one Nigerian sportsbook and instantly recreate
-              the equivalent selections on another. No guessing — just precise,
-              transparent bet slip conversion.
+              {t('landing.heroDesc', 'Enter a bet code from one supported sportsbook and recreate equivalent selections on another with transparent mapping.')}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
               <Link to="/convert" className="btn-primary flex items-center gap-2">
                 <ArrowLeftRight className="w-5 h-5" />
-                Convert a Bet Slip
+                {t('landing.ctaPrimary', 'Convert a Bet Slip')}
               </Link>
-              <Link to="/register" className="btn-secondary">Create Free Account</Link>
+              <Link to="/register" className="btn-secondary">{t('landing.ctaSecondary', 'Create Free Account')}</Link>
             </div>
 
             <p className="mt-4 text-sm text-gray-500 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
@@ -130,14 +155,44 @@ export function LandingPage() {
       <section className="section-padding py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-3">Supported bookmakers</h2>
-          <p className="text-gray-400">10 Nigerian sportsbooks, with more added as plug-in modules.</p>
+          <p className="text-gray-400">{t('landing.supportedDesc', 'Global bookmaker coverage with expandable provider modules.')}</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {BOOKMAKER_LIST.map((bm) => (
-            <div key={bm.id} className="card card-hover p-5 flex flex-col items-center gap-3">
-              <BookmakerLogo id={bm.id} />
+          {bookmakers.slice(0, 20).map((bm) => (
+            <a key={bm.id} className="card card-hover p-5 flex flex-col items-center gap-3" href={bm.website} target="_blank" rel="noreferrer">
+              <div className="w-10 h-10 rounded-xl border border-[#2a3a52] bg-[#0f1623] flex items-center justify-center text-[10px] text-gray-300">
+                {bm.name.slice(0, 2).toUpperCase()}
+              </div>
               <span className="text-sm font-medium text-gray-200 text-center leading-tight">{bm.name}</span>
+              <span className="text-xs text-gray-500">{bm.country}</span>
+            </a>
+          ))}
+          {bookmakers.length === 0 && (
+            <div className="col-span-full text-center text-sm text-gray-500">Bookmaker catalog will appear after synchronization.</div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Pricing preview (pre-login) ──────────────────────────── */}
+      <section className="section-padding py-20 bg-[#0f1623] border-y border-[#1e293b]">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">Plans for every growth stage</h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">Browse pricing before login. Checkout and billing controls are available after account sign-in.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {pricingPreview.map((plan) => (
+            <div key={plan.name} className="card p-6 text-center">
+              <p className="text-sm text-gray-400">{plan.name}</p>
+              <p className="text-3xl font-bold mt-2 gold-text">{plan.price}</p>
+              <p className="text-xs text-gray-500 mt-1">per month</p>
+              <p className="text-sm text-gray-300 mt-4">{plan.limit}</p>
+              <div className="mt-6 flex gap-2 justify-center">
+                <Link to="/register" className="btn-primary text-sm px-4 py-2">Sign up</Link>
+                <Link to="/login" className="btn-secondary text-sm px-4 py-2">Login</Link>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-3">{plan.cta}</p>
             </div>
           ))}
         </div>
@@ -147,7 +202,7 @@ export function LandingPage() {
       <section className="section-padding py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-3">Frequently asked questions</h2>
-          <p className="text-gray-400">Everything you need to know about BetCode Bridge.</p>
+          <p className="text-gray-400">{t('landing.faqTitle', 'Frequently asked questions')}</p>
         </div>
 
         <div className="max-w-3xl mx-auto space-y-3">
@@ -176,7 +231,7 @@ export function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-[#d4af37]/5 via-transparent to-green-500/5" />
           <div className="relative">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to convert your first bet slip?</h2>
-            <p className="text-gray-400 mb-6 max-w-xl mx-auto">Join BetCode Bridge today and translate bet codes across 10 Nigerian bookmakers.</p>
+            <p className="text-gray-400 mb-6 max-w-xl mx-auto">{t('landing.finalCtaDesc', 'Join BetCode Bridge and convert betting codes between supported bookmakers worldwide.')}</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/register" className="btn-primary">Get Started Free</Link>
               <Link to="/convert" className="btn-secondary">Try Convert</Link>

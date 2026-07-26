@@ -1,4 +1,7 @@
 // src/lib/providers/decoders/betking.ts
+import type { BetCodeDecoder, DecodedBetSlip, DecodedSelection } from '../../types';
+import { generateDestinationCode, generateSampleSlip } from '../baseDecoder';
+
 export const betkingDecoder: BetCodeDecoder = {
   bookmaker: 'betking',
   validateCode(code: string): boolean {
