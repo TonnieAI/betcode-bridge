@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "test:unit": "npx --yes tsx --test src/lib/__tests__/*.test.ts",
+    "test": "npm run test:unit && npm run test:payments",
     "test:payments": "npx --yes tsx --test api/payments/providers/__tests__/*.test.ts"
   },
   "dependencies": {

@@ -176,6 +176,16 @@ export function generateDestinationCode(
     msport: 'MS',
     surebet247: 'S2',
     premierbet: 'PB',
+    bet365: 'B3',
+    williamhill: 'WH',
+    ladbrokes: 'LB',
+    coral: 'CR',
+    paddypower: 'PP',
+    skybet: 'SK',
+    betfair: 'BF',
+    betvictor: 'BV',
+    unibet: 'UN',
+    '888sport': 'E8',
   };
 
   const prefix = prefixMap[bookmakerId] ?? 'BC';

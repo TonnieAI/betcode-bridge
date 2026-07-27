@@ -17,6 +17,7 @@ import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { AdminPage } from '@/pages/AdminPage';
 import { AdminBettingCompanies } from '@/pages/AdminBettingCompanies';
+import { AdminIntegrationHealthPage } from '@/pages/AdminIntegrationHealthPage';
 
 function App() {
   useEffect(() => {
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/admin/betting-companies" element={<AdminRoute><AdminBettingCompanies /></AdminRoute>} />
+                <Route path="/admin/integrations/health" element={<AdminRoute><AdminIntegrationHealthPage /></AdminRoute>} />
               </Routes>
             </main>
             <Footer />

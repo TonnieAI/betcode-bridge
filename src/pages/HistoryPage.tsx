@@ -19,15 +19,22 @@ export function HistoryPage() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [filterDest, setFilterDest] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<ConversionRecord | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+    setLoadError(null);
+    const { data, error } = await supabase
       .from('conversions')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+
+    if (error) {
+      setLoadError('Unable to load conversion history right now. Please refresh.');
+    }
+
     setRecords((data ?? []) as unknown as ConversionRecord[]);
     setLoading(false);
   }, [user]);
@@ -49,8 +56,13 @@ export function HistoryPage() {
   });
 
   async function handleDelete(id: string) {
+    const previous = records;
     setRecords(records.filter((r) => r.id !== id));
-    await supabase.from('conversions').delete().eq('id', id).eq('user_id', user?.id);
+    const { error } = await supabase.from('conversions').delete().eq('id', id).eq('user_id', user?.id);
+    if (error) {
+      setRecords(previous);
+      setLoadError('Unable to delete this conversion right now. Please try again.');
+    }
   }
 
   function handleExport() {
@@ -102,6 +114,12 @@ export function HistoryPage() {
         </div>
 
         {/* Filters */}
+        {loadError && (
+          <div className="mb-4 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+            {loadError}
+          </div>
+        )}
+
         <div className="card p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">

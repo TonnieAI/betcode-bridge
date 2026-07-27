@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
+import { getCountryOption } from '@/lib/geo';
 import { useI18n } from '@/lib/i18n';
-import { getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
+import { savePendingCheckout } from '@/lib/pendingCheckout';
+import type { BillingCycle } from '@/lib/types';
+import { applyBillingCycle, convertFromNgn, PRICE_DISPLAY_CURRENCIES } from '@/lib/pricing';
+import { buildFallbackCatalog, getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
+import { createCheckoutSession } from '@/services/subscriptionService';
 import {
   ArrowLeftRight, Zap, Shield, Search, BarChart3, Bell, Star,
-  Check, ChevronDown, TrendingUp, Clock, Layers, Lock,
+  Check, ChevronDown, TrendingUp, Clock, Layers, Lock, Loader2,
 } from 'lucide-react';
 
 const features = [
@@ -24,10 +30,18 @@ const steps = [
 ];
 
 const pricingPreview = [
-  { name: 'Free', price: 'From $0', limit: '10 conversions / month', cta: 'Create account' },
-  { name: 'Basic', price: 'Localized pricing', limit: '50 conversions / month', cta: 'Sign in to subscribe' },
-  { name: 'Premium', price: 'Localized pricing', limit: '500 conversions / month', cta: 'Sign in to subscribe' },
+  { id: 'free', name: 'Free', baseNgn: 0, limit: '10 conversions / month' },
+  { id: 'basic', name: 'Basic', baseNgn: 2500, limit: '50 conversions / month' },
+  { id: 'pro', name: 'Premium', baseNgn: 5000, limit: '500 conversions / month' },
 ];
+
+function formatCurrency(amount: number, currency = 'USD', locale = 'en') {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 const faqs = [
   { q: 'Does BetCode Bridge place bets for me?', a: 'No. BetCode Bridge only translates bet slips between bookmakers. After conversion, you review the reconstructed slip and manually recreate it on the destination bookmaker. We never place bets on your behalf.' },
@@ -39,9 +53,49 @@ const faqs = [
 ];
 
 export function LandingPage() {
+  const { user, profile } = useAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [bookmakers, setBookmakers] = useState<GlobalBookmaker[]>([]);
-  const { t } = useI18n();
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [displayCurrency, setDisplayCurrency] = useState<(typeof PRICE_DISPLAY_CURRENCIES)[number]>('USD');
+  const [checkoutLoadingPlanId, setCheckoutLoadingPlanId] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { t, language } = useI18n();
+  const navigate = useNavigate();
+
+  async function handleSubscribe(planId: string) {
+    setCheckoutError(null);
+
+    if (planId === 'free') {
+      navigate('/register');
+      return;
+    }
+
+    if (!user) {
+      savePendingCheckout({ planId, billingCycle });
+      navigate('/register?checkout=1');
+      return;
+    }
+
+    const country = profile?.country || 'US';
+    const currency = profile?.currency || getCountryOption(country).defaultCurrency;
+    const paymentProvider = getCountryOption(country).preferredPaymentProvider;
+
+    setCheckoutLoadingPlanId(planId);
+
+    try {
+      const session = await createCheckoutSession(planId, billingCycle, {
+        country,
+        currency,
+        paymentProvider,
+      });
+
+      window.location.href = session.authorizationUrl;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Failed to initialize checkout.');
+      setCheckoutLoadingPlanId(null);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -50,10 +104,10 @@ export function LandingPage() {
       try {
         const data = await getGlobalBookmakers(true);
         if (!mounted) return;
-        setBookmakers(data);
+        setBookmakers(data.length > 0 ? data : buildFallbackCatalog());
       } catch {
         if (!mounted) return;
-        setBookmakers([]);
+        setBookmakers(buildFallbackCatalog());
       }
     })();
 
@@ -96,7 +150,7 @@ export function LandingPage() {
             </div>
 
             <p className="mt-4 text-sm text-gray-500 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
-              Sign up to unlock your plan details, usage limits, and subscription controls inside your profile.
+              Choose a plan and continue directly to secure checkout.
             </p>
 
             <div className="flex items-center justify-center gap-6 mt-10 text-sm text-gray-500 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
@@ -178,21 +232,81 @@ export function LandingPage() {
       <section className="section-padding py-20 bg-[#0f1623] border-y border-[#1e293b]">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-3">Plans for every growth stage</h2>
-          <p className="text-gray-400 max-w-2xl mx-auto">Browse pricing before login. Checkout and billing controls are available after account sign-in.</p>
+          <p className="text-gray-400 max-w-2xl mx-auto">Browse pricing and subscribe in one click.</p>
         </div>
+
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <span className="text-xs text-gray-500">Billing cycle</span>
+          <div className="inline-flex rounded-lg border border-[#2a3a52] bg-[#0a0e1a] p-1">
+            <button
+              type="button"
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                billingCycle === 'monthly' ? 'bg-[#d4af37]/20 text-[#f0d77a]' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingCycle('yearly')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                billingCycle === 'yearly' ? 'bg-[#d4af37]/20 text-[#f0d77a]' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Yearly
+            </button>
+          </div>
+
+          <div className="inline-flex rounded-lg border border-[#2a3a52] bg-[#0a0e1a] p-1">
+            {PRICE_DISPLAY_CURRENCIES.map((currency) => (
+              <button
+                key={currency}
+                type="button"
+                onClick={() => setDisplayCurrency(currency)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  displayCurrency === currency ? 'bg-[#d4af37]/20 text-[#f0d77a]' : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                {currency}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {checkoutError && (
+          <div className="max-w-2xl mx-auto mb-6 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm text-center">
+            {checkoutError}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {pricingPreview.map((plan) => (
             <div key={plan.name} className="card p-6 text-center">
               <p className="text-sm text-gray-400">{plan.name}</p>
-              <p className="text-3xl font-bold mt-2 gold-text">{plan.price}</p>
-              <p className="text-xs text-gray-500 mt-1">per month</p>
+              <p className="text-3xl font-bold mt-2 gold-text">
+                {formatCurrency(
+                  applyBillingCycle(convertFromNgn(plan.baseNgn, displayCurrency), billingCycle),
+                  displayCurrency,
+                  language,
+                )}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">per {billingCycle === 'monthly' ? 'month' : 'year'}</p>
               <p className="text-sm text-gray-300 mt-4">{plan.limit}</p>
-              <div className="mt-6 flex gap-2 justify-center">
-                <Link to="/register" className="btn-primary text-sm px-4 py-2">Sign up</Link>
-                <Link to="/login" className="btn-secondary text-sm px-4 py-2">Login</Link>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {`≈ ${formatCurrency(applyBillingCycle(plan.baseNgn, billingCycle), 'NGN', language)} base price`}
+              </p>
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={checkoutLoadingPlanId === plan.id}
+                  className="btn-primary text-sm px-4 py-2 w-full max-w-[180px] flex items-center justify-center gap-2"
+                >
+                  {checkoutLoadingPlanId === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Subscribe
+                </button>
               </div>
-              <p className="text-[11px] text-gray-500 mt-3">{plan.cta}</p>
             </div>
           ))}
         </div>

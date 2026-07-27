@@ -181,10 +181,23 @@ Confirm these scenarios:
 Run these before and after sandbox tests:
 
 ```bash
+npm test
 npm run test:payments
 npm run typecheck
 npm run build
 ```
+
+## Bookmaker API Foundation Checks
+
+For Bet365, Betfair, Sky Bet, and William Hill, the current behavior must remain integration-gated until official credentials and endpoint validation are complete.
+
+Validate the following:
+
+- capability reports `integration_required`
+- diagnostics include provider name, credential presence, and credential length only
+- diagnostics never include secret values
+- no bookmaker API keys are defined with `VITE_` prefixes
+- conversion requests to these providers are blocked and do not generate fake slips
 
 ## Current Limitation
 

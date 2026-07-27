@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BOOKMAKERS, BOOKMAKER_LIST, getIntegrationModeLabel, isBookmakerLive } from '@/lib/bookmakers';
+import { BOOKMAKERS, BOOKMAKER_LIST } from '@/lib/bookmakers';
+import { getAvailabilityLabel, getBookmakerCapability } from '@/lib/adapters';
 import { convertBetCode } from '@/lib/conversionEngine';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import type { BookmakerId, ConversionResult } from '@/lib/types';
-import { getDecoder } from '@/lib/providers/registry'; 
 import {
   ArrowRight, AlertCircle, CheckCircle2, XCircle, TrendingUp, TrendingDown,
   Copy, Save, Star, RefreshCw, Info, Ticket,
 } from 'lucide-react';
 import { BookmakerBadge, StatusBadge, ConversionPercentage, LoadingSpinner } from '@/components/ui';
-import { isCodeExpired } from '@/lib/conversionEngine';
 import { useI18n } from '@/lib/i18n';
 
 export function ConvertPage() {
@@ -27,11 +26,13 @@ export function ConvertPage() {
   const [result, setResult] = useState<ConversionResult | null>(null);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [readyOnly, setReadyOnly] = useState(false);
 
   const filteredBookmakers = useMemo(
-    () => (liveOnly ? BOOKMAKER_LIST.filter((bm) => bm.integrationMode === 'live') : BOOKMAKER_LIST),
-    [liveOnly],
+    () => (readyOnly
+      ? BOOKMAKER_LIST.filter((bm) => getBookmakerCapability(bm.id)?.availability === 'full')
+      : BOOKMAKER_LIST),
+    [readyOnly],
   );
 
   const hasAvailableBookmakers = filteredBookmakers.length > 0;
@@ -64,13 +65,18 @@ export function ConvertPage() {
     setError('Source and destination bookmaker must be different.');
     return;
   }
-  const decoder = getDecoder(source);
-  if (!decoder) {
-    setError(`No decoder registered for bookmaker: ${source}.`);
+  const sourceCapability = getBookmakerCapability(source);
+  const destinationCapability = getBookmakerCapability(destination);
+  if (!sourceCapability || !destinationCapability) {
+    setError('Bookmaker adapter not found. Please refresh and try again.');
     return;
   }
-  if (isCodeExpired(code.trim(), decoder)) {
-    setError('Bet code has expired. Codes are valid for 24 hours.');
+  if (!sourceCapability.canDecode) {
+    setError(`${BOOKMAKERS[source].name} is supported but conversion is not available yet. ${sourceCapability.requiredDataSource ?? 'Official API integration is required.'}`);
+    return;
+  }
+  if (!destinationCapability.canGenerateSlip) {
+    setError(`${BOOKMAKERS[destination].name} cannot generate destination bet slips yet. ${destinationCapability.requiredDataSource ?? 'Official API integration is required.'}`);
     return;
   }
   setLoading(true);
@@ -141,9 +147,9 @@ export function ConvertPage() {
   }
 
   const reachedLimit = profile ? profile.conversionsThisMonth >= profile.conversionLimit : false;
-  const sourceIsLive = isBookmakerLive(source);
-  const destinationIsLive = isBookmakerLive(destination);
-  const selectedPairIsLive = sourceIsLive && destinationIsLive;
+  const sourceCapability = getBookmakerCapability(source);
+  const destinationCapability = getBookmakerCapability(destination);
+  const selectedPairIsFull = sourceCapability?.availability === 'full' && destinationCapability?.availability === 'full';
 
   return (
     <div className="pt-16 min-h-screen">
@@ -171,21 +177,21 @@ export function ConvertPage() {
               <div className="inline-flex rounded-lg border border-[#2a3a52] bg-[#0a0e1a] p-1">
                 <button
                   type="button"
-                  onClick={() => setLiveOnly(false)}
+                  onClick={() => setReadyOnly(false)}
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    !liveOnly ? 'bg-[#d4af37]/20 text-[#f0d77a]' : 'text-gray-400 hover:text-gray-200'
+                    !readyOnly ? 'bg-[#d4af37]/20 text-[#f0d77a]' : 'text-gray-400 hover:text-gray-200'
                   }`}
                 >
                   All
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLiveOnly(true)}
+                  onClick={() => setReadyOnly(true)}
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    liveOnly ? 'bg-green-500/20 text-green-300' : 'text-gray-400 hover:text-gray-200'
+                    readyOnly ? 'bg-green-500/20 text-green-300' : 'text-gray-400 hover:text-gray-200'
                   }`}
                 >
-                  Live only
+                  Full conversion
                 </button>
               </div>
             </div>
@@ -200,12 +206,17 @@ export function ConvertPage() {
                 disabled={!hasAvailableBookmakers}
               >
                 {filteredBookmakers.map((bm) => (
-                  <option key={bm.id} value={bm.id}>{bm.name} ({getIntegrationModeLabel(bm.id)})</option>
+                  <option key={bm.id} value={bm.id}>{bm.name} ({getAvailabilityLabel(bm.id)})</option>
                 ))}
               </select>
               <p className="text-xs mt-1 text-gray-500">
-                Status: <span className={sourceIsLive ? 'text-green-400' : 'text-yellow-400'}>{sourceIsLive ? 'Live API' : 'Simulated'}</span>
+                Status:
+                {' '}
+                <span className={sourceCapability?.availability === 'full' ? 'text-green-400' : 'text-yellow-400'}>{getAvailabilityLabel(source)}</span>
               </p>
+              {sourceCapability?.availability !== 'full' && (
+                <p className="text-[11px] mt-1 text-yellow-300/80">{sourceCapability?.requiredDataSource ?? 'Integration required'}</p>
+              )}
             </div>
 
             {/* Swap */}
@@ -225,12 +236,17 @@ export function ConvertPage() {
                 disabled={!hasAvailableBookmakers}
               >
                 {filteredBookmakers.map((bm) => (
-                  <option key={bm.id} value={bm.id}>{bm.name} ({getIntegrationModeLabel(bm.id)})</option>
+                  <option key={bm.id} value={bm.id}>{bm.name} ({getAvailabilityLabel(bm.id)})</option>
                 ))}
               </select>
               <p className="text-xs mt-1 text-gray-500">
-                Status: <span className={destinationIsLive ? 'text-green-400' : 'text-yellow-400'}>{destinationIsLive ? 'Live API' : 'Simulated'}</span>
+                Status:
+                {' '}
+                <span className={destinationCapability?.availability === 'full' ? 'text-green-400' : 'text-yellow-400'}>{getAvailabilityLabel(destination)}</span>
               </p>
+              {destinationCapability?.availability !== 'full' && (
+                <p className="text-[11px] mt-1 text-yellow-300/80">{destinationCapability?.requiredDataSource ?? 'Integration required'}</p>
+              )}
             </div>
           </div>
 
@@ -240,19 +256,19 @@ export function ConvertPage() {
               <div>
                 No bookmakers match this filter yet.
                 {' '}
-                <span className="text-gray-300">Switch to All, or mark at least one bookmaker as Live API in configuration.</span>
+                <span className="text-gray-300">Switch to All, or enable at least one bookmaker with full conversion capability.</span>
               </div>
             </div>
           )}
 
-          {!selectedPairIsLive && hasAvailableBookmakers && (
+          {!selectedPairIsFull && hasAvailableBookmakers && (
             <div className="mb-6 flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-300">
               <Info className="w-4 h-4 mt-0.5" />
               <div>
-                This pair is currently running in simulation mode.
+                This pair is not fully integrated yet.
                 {' '}
                 <span className="text-gray-300">
-                  {BOOKMAKERS[source].name} and {BOOKMAKERS[destination].name} are shown with status so users can distinguish live vs simulated translations.
+                  {BOOKMAKERS[source].name}: {getAvailabilityLabel(source)}. {BOOKMAKERS[destination].name}: {getAvailabilityLabel(destination)}.
                 </span>
               </div>
             </div>

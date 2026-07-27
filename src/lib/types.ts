@@ -12,7 +12,17 @@ export type BookmakerId =
   | 'bangbet'
   | 'msport'
   | 'surebet247'
-  | 'premierbet';
+  | 'premierbet'
+  | 'bet365'
+  | 'williamhill'
+  | 'ladbrokes'
+  | 'coral'
+  | 'paddypower'
+  | 'skybet'
+  | 'betfair'
+  | 'betvictor'
+  | 'unibet'
+  | '888sport';
 
 export type IntegrationMode = 'live' | 'simulated';
 

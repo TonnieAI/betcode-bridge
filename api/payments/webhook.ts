@@ -5,7 +5,7 @@ import {
   getPaymentProvider,
   getStripeWebhookSecret,
 } from '../_lib/supabase.js';
-import { allowMethods, readRawBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js';
+import { allowMethods, handleApiError, readRawBody, sendError, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js';
 import { loadActivationContext, validateGatewayPaymentConsistency } from '../_lib/paymentValidation.js';
 import { getPaymentProviderClient } from './providers/index.js';
 import { buildEventKey, detectProviderFromHeaders, isDuplicateWebhookEventError, normalizeProvider } from './webhookUtils.js';
@@ -57,7 +57,8 @@ function assertProviderWebhookConfig(provider: 'stripe' | 'flutterwave'): void {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!allowMethods(req, res, ['POST'])) return;
 
-  const receivedAt = new Date().toISOString();
+  try {
+    const receivedAt = new Date().toISOString();
 
   const fallbackProvider = normalizeProvider(getPaymentProvider());
   const providerName = detectProviderFromHeaders(req.headers, fallbackProvider);
@@ -66,23 +67,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const hasStripeSignatureHeader = headerPresent(req.headers, 'stripe-signature');
   const hasFlutterwaveVerifHashHeader = headerPresent(req.headers, 'verif-hash');
 
-  if (providerName === 'stripe' || providerName === 'flutterwave') {
-    try {
-      assertProviderWebhookConfig(providerName);
-    } catch (error) {
-      const message = providerName === 'stripe'
-        ? 'Stripe webhook backend configuration error'
-        : 'Flutterwave webhook backend configuration error';
-
-      console.error('webhook: provider configuration invalid', {
-        provider: providerName,
-        error: error instanceof Error ? error.message : 'Unknown provider configuration error',
-      });
-
-      sendJson(res, 500, { success: false, message });
-      return;
+    if (providerName === 'stripe' || providerName === 'flutterwave') {
+      try {
+        assertProviderWebhookConfig(providerName);
+      } catch {
+        console.error('api_error', {
+          endpoint: 'payments/webhook',
+          errorType: `${providerName}_config_invalid`,
+          statusCode: 500,
+        });
+        const message = providerName === 'stripe'
+          ? 'Stripe webhook backend configuration error'
+          : 'Flutterwave webhook backend configuration error';
+        sendError(res, 500, message, 'provider_config_invalid');
+        return;
+      }
     }
-  }
 
   console.info('webhook: received', {
     receivedAt,
@@ -102,10 +102,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     passed: webhook.signatureValid,
   });
 
-  if (!webhook.signatureValid) {
-    sendJson(res, 401, { success: false, message: 'Webhook processing failed' });
-    return;
-  }
+    if (!webhook.signatureValid) {
+      sendError(res, 401, 'Webhook processing failed', 'invalid_signature');
+      return;
+    }
 
   const transaction = webhook.transaction;
   const eventType = transaction.eventType || 'unknown';
@@ -130,34 +130,34 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       payload: transaction.rawPayload,
     });
 
-  if (eventInsertError) {
-    const duplicate = isDuplicateWebhookEventError(eventInsertError.message);
+    if (eventInsertError) {
+      const duplicate = isDuplicateWebhookEventError(eventInsertError.message);
 
-    if (duplicate) {
-      sendJson(res, 200, { received: true, deduplicated: true });
+      if (duplicate) {
+        sendJson(res, 200, { received: true, deduplicated: true });
+        return;
+      }
+
+      console.error('api_error', {
+        endpoint: 'payments/webhook',
+        errorType: 'event_persist_failed',
+        statusCode: 500,
+      });
+      sendError(res, 500, 'Webhook processing failed', 'event_persist_failed');
       return;
     }
-
-    console.error('webhook: failed to persist event', {
-      reference,
-      eventType,
-      status,
-      error: eventInsertError.message,
-    });
-    sendJson(res, 500, { success: false, message: 'Webhook processing failed' });
-    return;
-  }
 
   if (transaction.ok) {
     const localValidation = await loadActivationContext(admin, { reference });
-    if (!localValidation.ok) {
-      console.error('webhook: local validation failed', {
-        reference,
-        reason: localValidation.reason,
-      });
-      sendJson(res, 200, { received: true, ignored: true });
-      return;
-    }
+      if (!localValidation.ok) {
+        console.error('api_error', {
+          endpoint: 'payments/webhook',
+          errorType: 'local_validation_failed',
+          statusCode: 200,
+        });
+        sendJson(res, 200, { received: true, ignored: true });
+        return;
+      }
 
     const consistency = validateGatewayPaymentConsistency({
       context: localValidation.context,
@@ -166,11 +166,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       gatewayMetadata: transaction.metadata ?? undefined,
     });
 
-    if (!consistency.ok) {
-      console.error('webhook: gateway consistency failed', {
-        reference,
-        reason: consistency.reason,
-      });
+      if (!consistency.ok) {
+        console.error('api_error', {
+          endpoint: 'payments/webhook',
+          errorType: 'gateway_consistency_failed',
+          statusCode: 200,
+        });
 
       await admin
         .from('subscriptions')
@@ -190,23 +191,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         .eq('gateway_reference', reference)
         .eq('status', 'pending');
 
-      sendJson(res, 200, { received: true, rejected: true });
-      return;
-    }
+        sendJson(res, 200, { received: true, rejected: true });
+        return;
+      }
 
     const { error: activateError } = await admin.rpc('activate_subscription_by_reference', {
       p_transaction_reference: reference,
       p_payment_payload: transaction.rawPayload,
     });
 
-    if (activateError) {
-      console.error('webhook: activation failed', {
-        reference,
-        error: activateError.message,
-      });
-      sendJson(res, 500, { success: false, message: 'Webhook processing failed' });
-      return;
-    }
+      if (activateError) {
+        console.error('api_error', {
+          endpoint: 'payments/webhook',
+          errorType: 'activation_failed',
+          statusCode: 500,
+        });
+        sendError(res, 500, 'Webhook processing failed', 'activation_failed');
+        return;
+      }
 
     await admin
       .from('payments')
@@ -241,5 +243,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       .eq('status', 'pending');
   }
 
-  sendJson(res, 200, { received: true });
+    sendJson(res, 200, { received: true });
+  } catch (error) {
+    handleApiError(res, 'payments/webhook', error, 500);
+  }
 }

@@ -2,7 +2,9 @@ import {
   createSupabaseAdminClient,
   requireAuthenticatedUser,
 } from '../_lib/supabase.js';
-import { allowMethods, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js';
+import { allowMethods, handleApiError, sendError, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js';
+import { resolvePaymentProvider } from '../_lib/globalConfig.js';
+import { convertFromNgn, getCurrencySymbol } from '../_lib/pricing.js';
 
 type PlanRow = {
   id: string;
@@ -33,13 +35,14 @@ type LocalizedPriceRow = {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!allowMethods(req, res, ['GET'])) return;
 
-  const auth = await requireAuthenticatedUser(req);
-  if (!auth.user) {
-    sendJson(res, 401, { success: false, message: 'Authentication required' });
-    return;
-  }
+  try {
+    const auth = await requireAuthenticatedUser(req);
+    if (!auth.user) {
+      sendError(res, 401, 'Authentication required', 'auth_required');
+      return;
+    }
 
-  const admin = createSupabaseAdminClient();
+    const admin = createSupabaseAdminClient();
 
   const { data: profile, error: profileError } = await admin
     .from('profiles')
@@ -47,12 +50,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     .eq('id', auth.user.id)
     .maybeSingle();
 
-  if (profileError) {
-    console.error('overview: failed to load profile context', {
-      userId: auth.user.id,
-      error: profileError.message,
-    });
-  }
+    if (profileError) {
+      console.error('api_error', {
+        endpoint: 'payments/overview',
+        errorType: 'profile_context_load_failed',
+        statusCode: 200,
+      });
+    }
 
   const profileCountry = String(profile?.country || 'GLOBAL').toUpperCase();
   const profileCurrency = String(profile?.currency || '').toUpperCase();
@@ -87,69 +91,90 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       .limit(10),
   ]);
 
-  if (plansResult.error) {
-    console.error('overview: failed to load plans', {
-      userId: auth.user.id,
-      error: plansResult.error.message,
-    });
-    sendJson(res, 500, { success: false, message: 'Failed to load billing overview' });
-    return;
-  }
-
-  if (localizedResult.error) {
-    console.error('overview: failed to load localized prices', {
-      userId: auth.user.id,
-      country: profileCountry,
-      currency: profileCurrency,
-      error: localizedResult.error.message,
-    });
-    sendJson(res, 500, { success: false, message: 'Failed to load billing overview' });
-    return;
-  }
-
-  if (subscriptionResult.error) {
-    console.error('overview: failed to load subscription', {
-      userId: auth.user.id,
-      error: subscriptionResult.error.message,
-    });
-    sendJson(res, 500, { success: false, message: 'Failed to load billing overview' });
-    return;
-  }
-
-  if (paymentsResult.error) {
-    console.error('overview: failed to load payments', {
-      userId: auth.user.id,
-      error: paymentsResult.error.message,
-    });
-    sendJson(res, 500, { success: false, message: 'Failed to load billing overview' });
-    return;
-  }
-
-  const localizedByPlan = new Map<string, LocalizedPriceRow>();
-  for (const row of (localizedResult.data || []) as LocalizedPriceRow[]) {
-    localizedByPlan.set(row.plan_id, row);
-  }
-
-  const plans = ((plansResult.data || []) as PlanRow[]).map((plan) => {
-    const localized = localizedByPlan.get(plan.id);
-    if (!localized) {
-      return plan;
+    if (plansResult.error) {
+      console.error('api_error', {
+        endpoint: 'payments/overview',
+        errorType: 'plans_load_failed',
+        statusCode: 500,
+      });
+      sendError(res, 500, 'Failed to load billing overview', 'plans_load_failed');
+      return;
     }
 
-    return {
-      ...plan,
-      country: localized.country,
-      currency: localized.currency,
-      currency_symbol: localized.currency_symbol,
-      payment_provider: localized.payment_provider,
-      localized_price: localized.localized_price,
-    };
-  });
+    if (localizedResult.error) {
+      console.error('api_error', {
+        endpoint: 'payments/overview',
+        errorType: 'localized_prices_load_failed',
+        statusCode: 500,
+      });
+      sendError(res, 500, 'Failed to load billing overview', 'localized_prices_load_failed');
+      return;
+    }
 
-  sendJson(res, 200, {
-    success: true,
-    plans,
-    subscription: subscriptionResult.data || null,
-    payments: paymentsResult.data || [],
-  });
+    if (subscriptionResult.error) {
+      console.error('api_error', {
+        endpoint: 'payments/overview',
+        errorType: 'subscription_load_failed',
+        statusCode: 500,
+      });
+      sendError(res, 500, 'Failed to load billing overview', 'subscription_load_failed');
+      return;
+    }
+
+    if (paymentsResult.error) {
+      console.error('api_error', {
+        endpoint: 'payments/overview',
+        errorType: 'payments_load_failed',
+        statusCode: 500,
+      });
+      sendError(res, 500, 'Failed to load billing overview', 'payments_load_failed');
+      return;
+    }
+
+    const localizedByPlan = new Map<string, LocalizedPriceRow>();
+    for (const row of (localizedResult.data || []) as LocalizedPriceRow[]) {
+      localizedByPlan.set(row.plan_id, row);
+    }
+
+    const plans = ((plansResult.data || []) as PlanRow[]).map((plan) => {
+      const localized = localizedByPlan.get(plan.id);
+      if (!localized) {
+        const normalizedCurrency = profileCurrency || plan.currency;
+        const normalizedPlanCurrency = (plan.currency || '').toUpperCase();
+
+        if (normalizedPlanCurrency === 'NGN' && normalizedCurrency) {
+          const fallbackPrice = convertFromNgn(Number(plan.price), normalizedCurrency);
+
+          return {
+            ...plan,
+            country: profileCountry,
+            currency: normalizedCurrency,
+            currency_symbol: getCurrencySymbol(normalizedCurrency),
+            payment_provider: resolvePaymentProvider(profileCountry, normalizedCurrency, (plan.payment_provider || 'paystack') as 'paystack' | 'flutterwave' | 'stripe'),
+            localized_price: fallbackPrice,
+          };
+        }
+
+        return plan;
+      }
+
+      return {
+        ...plan,
+        country: localized.country,
+        currency: localized.currency,
+        currency_symbol: localized.currency_symbol,
+        payment_provider: localized.payment_provider,
+        localized_price: localized.localized_price,
+      };
+    });
+
+    sendJson(res, 200, {
+      success: true,
+      plans,
+      subscription: subscriptionResult.data || null,
+      payments: paymentsResult.data || [],
+    });
+  } catch (error) {
+    handleApiError(res, 'payments/overview', error, 500);
+  }
 }

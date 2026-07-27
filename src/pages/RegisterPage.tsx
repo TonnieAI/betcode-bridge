@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { clearPendingCheckout, getPendingCheckout } from '@/lib/pendingCheckout';
 import { COUNTRY_OPTIONS, SUPPORTED_LANGUAGES, getCountryOption, type SupportedCurrency } from '@/lib/geo';
 import { useI18n } from '@/lib/i18n';
+import { createCheckoutSession } from '@/services/subscriptionService';
 import { ArrowLeftRight, Mail, Lock, User, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 
 export function RegisterPage() {
   const { signUp } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const shouldResumeCheckout = searchParams.get('checkout') === '1';
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +30,24 @@ export function RegisterPage() {
     setCountry(nextCountry);
     const option = getCountryOption(nextCountry);
     setCurrency(option.defaultCurrency as SupportedCurrency);
+  }
+
+  async function resumeCheckoutAfterAuth() {
+    const pending = getPendingCheckout();
+    if (!pending) {
+      navigate('/dashboard');
+      return;
+    }
+
+    const paymentProvider = getCountryOption(country).preferredPaymentProvider;
+    const session = await createCheckoutSession(pending.planId, pending.billingCycle, {
+      country,
+      currency,
+      paymentProvider,
+    });
+
+    clearPendingCheckout();
+    window.location.href = session.authorizationUrl;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -52,6 +74,16 @@ export function RegisterPage() {
     if (error) {
       setError(error);
     } else {
+      if (shouldResumeCheckout) {
+        try {
+          await resumeCheckoutAfterAuth();
+          return;
+        } catch (checkoutError) {
+          setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to continue checkout.');
+          return;
+        }
+      }
+
       navigate('/dashboard');
     }
   }
@@ -193,7 +225,7 @@ export function RegisterPage() {
 
         <p className="text-sm text-gray-400 text-center mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="gold-text hover:underline">Sign in</Link>
+          <Link to={shouldResumeCheckout ? '/login?checkout=1' : '/login'} className="gold-text hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

@@ -16,6 +16,7 @@ interface CheckoutResponse {
 interface CheckoutContext {
   country?: string;
   currency?: string;
+  paymentProvider?: 'paystack' | 'flutterwave' | 'stripe';
 }
 
 interface VerifyResponse {
@@ -55,6 +56,16 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   const responseText = await response.text();
   const contentType = response.headers.get('content-type') || 'unknown';
   const bodyPreview = responseText.slice(0, 200);
+  const endpoint = new URL(response.url, window.location.origin).pathname;
+
+  const fallbackMessageByEndpoint: Record<string, string> = {
+    '/api/payments/checkout': 'Unable to start checkout. Please try again.',
+    '/api/payments/verify': 'Unable to verify payment right now. Please try again later.',
+    '/api/payments/overview': 'Unable to load billing information right now. Please try again later.',
+    '/api/payments/cancel': 'Unable to update subscription right now. Please try again later.',
+  };
+
+  const fallbackMessage = fallbackMessageByEndpoint[endpoint] || 'Something went wrong. Please try again later.';
 
   console.info('subscriptionService: api response diagnostic', {
     url: response.url,
@@ -64,20 +75,24 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   });
 
   if (!responseText.trim()) {
-    throw new Error('Empty response received from billing API');
+    throw new Error(fallbackMessage);
   }
 
   let payload: unknown;
   try {
     payload = JSON.parse(responseText) as T;
   } catch {
-    throw new Error(`Invalid JSON response from billing API (${response.status}, ${contentType})`);
+    if (!response.ok) {
+      throw new Error(fallbackMessage);
+    }
+    throw new Error('Unable to process billing response. Please try again later.');
   }
 
   if (!response.ok) {
-    const message = (payload as { message?: string; error?: string } | null)?.message
-      || (payload as { message?: string; error?: string } | null)?.error
-      || 'Request failed';
+    const parsedError = payload as { error?: string; message?: string; details?: string } | null;
+    const baseMessage = parsedError?.error || parsedError?.message || fallbackMessage;
+    const details = parsedError?.details;
+    const message = details ? `${baseMessage} ${details}` : baseMessage;
     throw new Error(message);
   }
 
@@ -139,9 +154,13 @@ export async function createCheckoutSession(
     headers,
     body: JSON.stringify({
       planId,
+      plan_id: planId,
       billingCycle,
+      billing_cycle: billingCycle,
       country: context.country,
       currency: context.currency,
+      paymentProvider: context.paymentProvider,
+      payment_provider: context.paymentProvider,
     }),
   });
 

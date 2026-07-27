@@ -22,7 +22,8 @@ import {
   verifyPaymentReference,
 } from '@/services/subscriptionService';
 import { useI18n } from '@/lib/i18n';
-import { COUNTRY_OPTIONS, SUPPORTED_LANGUAGES } from '@/lib/geo';
+import { COUNTRY_OPTIONS, SUPPORTED_LANGUAGES, getCountryOption } from '@/lib/geo';
+import { applyBillingCycle } from '@/lib/pricing';
 
 const PLAN_FALLBACK_INFO: Record<SubscriptionPlan, { name: string; limit: number; price: number }> = {
   free: { name: 'Free', limit: 10, price: 0 },
@@ -175,9 +176,13 @@ export function ProfilePage() {
     setBillingSuccess(null);
 
     try {
+      const country = profile?.country || 'US';
+      const currency = profile?.currency || getCountryOption(country).defaultCurrency;
+      const paymentProvider = getCountryOption(country).preferredPaymentProvider;
       const session = await createCheckoutSession(planId, billingCycle, {
-        country: profile?.country,
-        currency: profile?.currency,
+        country,
+        currency,
+        paymentProvider,
       });
       window.location.href = session.authorizationUrl;
     } catch (error) {
@@ -446,14 +451,17 @@ export function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                   {plans.map((plan) => {
                     const isCurrent = profile.plan === plan.id && subscription?.subscription_status === 'active';
-                    const isEnterprise = plan.id === 'enterprise';
                     const isFree = plan.id === 'free';
 
                     return (
                       <div key={plan.id} className={`p-4 rounded-lg border ${isCurrent ? 'border-[#d4af37]/50 bg-[#d4af37]/5' : 'border-[#1e293b]'}`}>
                         <p className="text-sm font-semibold">{plan.name}</p>
                         <p className="text-xs text-gray-400 mt-1">
-                          {formatCurrency(Number(plan.localized_price ?? plan.price), profile.currency || plan.currency, language)} / {billingCycle}
+                          {formatCurrency(
+                            applyBillingCycle(Number(plan.localized_price ?? plan.price), billingCycle),
+                            profile.currency || plan.currency,
+                            language,
+                          )} / {billingCycle}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{plan.usage_limit} conv/mo</p>
 
@@ -470,8 +478,6 @@ export function ProfilePage() {
                             <span className="badge-gold text-xs">Current</span>
                           ) : isFree ? (
                             <span className="badge-info text-xs">Included</span>
-                          ) : isEnterprise ? (
-                            <span className="badge-warning text-xs">Contact Admin</span>
                           ) : (
                             <button
                               onClick={() => handleCheckout(plan.id)}
@@ -481,7 +487,7 @@ export function ProfilePage() {
                               {billingActionLoading === plan.id || billingActionLoading === 'verify'
                                 ? <Loader2 className="w-4 h-4 animate-spin" />
                                 : null}
-                              {profile.plan === 'free' ? 'Upgrade Plan' : 'Change Plan'}
+                              {profile.plan === 'free' || plan.id === 'enterprise' ? 'Upgrade Plan' : 'Change Plan'}
                             </button>
                           )}
                         </div>

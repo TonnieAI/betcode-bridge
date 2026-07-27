@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { BOOKMAKER_LIST } from '@/lib/bookmakers';
+import { listBookmakerCapabilityRecords } from '@/lib/bookmakerCapabilityService';
 import { BookmakerLogo, LoadingSpinner } from '@/components/ui';
 import { useI18n } from '@/lib/i18n';
 import {
@@ -40,6 +41,33 @@ interface AdminConversionRow {
   created_at: string;
 }
 
+type BetfairConnectionStatus = 'integration_required' | 'connected' | 'failed';
+type BetfairIntegrationAction = 'auth' | 'events' | 'markets';
+
+interface BetfairCredentialStatus {
+  name: string;
+  present: boolean;
+}
+
+interface BetfairIntegrationLog {
+  provider: string;
+  timestamp: string;
+  testType: string;
+  success: 'success' | 'failure';
+  errorCategory: string | null;
+}
+
+interface BetfairIntegrationResponse {
+  status?: BetfairConnectionStatus;
+  message?: string;
+  missingRequirements?: string[];
+  credentialStatus?: BetfairCredentialStatus[];
+  eventsReceived?: number;
+  marketsReceived?: number;
+  lastSuccessfulTest?: string;
+  log?: BetfairIntegrationLog;
+}
+
 function formatCurrency(amount: number, currency = 'USD', locale = 'en') {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -59,9 +87,24 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'bookmakers' | 'billing' | 'logs'>('overview');
   const [adminActionLoading, setAdminActionLoading] = useState<string | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [betfairStatus, setBetfairStatus] = useState<BetfairConnectionStatus>('integration_required');
+  const [betfairMessage, setBetfairMessage] = useState<string>('Integration tests not run yet.');
+  const [betfairEventsReceived, setBetfairEventsReceived] = useState<number>(0);
+  const [betfairMarketsReceived, setBetfairMarketsReceived] = useState<number>(0);
+  const [betfairLastSuccessfulTest, setBetfairLastSuccessfulTest] = useState<string | null>(null);
+  const [betfairLogs, setBetfairLogs] = useState<BetfairIntegrationLog[]>([]);
+  const [betfairActionLoading, setBetfairActionLoading] = useState<BetfairIntegrationAction | null>(null);
+  const [betfairError, setBetfairError] = useState<string | null>(null);
+  const [betfairCredentials, setBetfairCredentials] = useState<BetfairCredentialStatus[]>([
+    { name: 'BETFAIR_APP_KEY', present: false },
+    { name: 'BETFAIR_USERNAME', present: false },
+    { name: 'BETFAIR_PASSWORD', present: false },
+  ]);
 
   async function loadAdminData() {
     setLoading(true);
+    setLoadError(null);
 
     const [
       profilesRes,
@@ -79,6 +122,10 @@ export function AdminPage() {
     const conversions = (conversionsRes.data ?? []) as AdminConversionRow[];
     const nextSubscriptions = (subscriptionsRes.data ?? []) as SubscriptionRecord[];
     const nextPayments = (paymentsRes.data ?? []) as PaymentRecord[];
+
+    if (profilesRes.error || conversionsRes.error || subscriptionsRes.error || paymentsRes.error) {
+      setLoadError('Some admin data failed to load. Please refresh.');
+    }
 
     const totalUsers = profiles.length;
     const totalConversions = conversions.length;
@@ -113,6 +160,19 @@ export function AdminPage() {
 
   useEffect(() => {
     loadAdminData();
+  }, []);
+
+  useEffect(() => {
+    const capability = listBookmakerCapabilityRecords().find((record) => record.id === 'betfair');
+
+    if (!capability) return;
+
+    const missing = new Set(capability.missingRequirements);
+    setBetfairCredentials([
+      { name: 'BETFAIR_APP_KEY', present: !missing.has('BETFAIR_APP_KEY') },
+      { name: 'BETFAIR_USERNAME', present: !missing.has('BETFAIR_USERNAME') },
+      { name: 'BETFAIR_PASSWORD', present: !missing.has('BETFAIR_PASSWORD') },
+    ]);
   }, []);
 
   const usersById = useMemo(() => {
@@ -157,6 +217,73 @@ export function AdminPage() {
     }
   }
 
+  async function runBetfairIntegrationTest(action: BetfairIntegrationAction) {
+    setBetfairActionLoading(action);
+    setBetfairError(null);
+
+    const endpointByAction: Record<BetfairIntegrationAction, string> = {
+      auth: '/api/admin/integrations/betfair/test-auth',
+      events: '/api/admin/integrations/betfair/test-events',
+      markets: '/api/admin/integrations/betfair/test-markets',
+    };
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        throw new Error('Session expired. Please sign in again.');
+      }
+
+      const response = await fetch(endpointByAction[action], {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const payload = (await response.json()) as BetfairIntegrationResponse;
+
+      if (Array.isArray(payload.credentialStatus) && payload.credentialStatus.length > 0) {
+        setBetfairCredentials(payload.credentialStatus);
+      }
+
+      if (payload.status) {
+        setBetfairStatus(payload.status);
+      }
+
+      if (typeof payload.eventsReceived === 'number') {
+        setBetfairEventsReceived(payload.eventsReceived);
+      }
+
+      if (typeof payload.marketsReceived === 'number') {
+        setBetfairMarketsReceived(payload.marketsReceived);
+      }
+
+      if (payload.lastSuccessfulTest) {
+        setBetfairLastSuccessfulTest(payload.lastSuccessfulTest);
+      }
+
+      if (payload.message) {
+        setBetfairMessage(payload.message);
+      }
+
+      if (payload.log) {
+        setBetfairLogs((current) => [payload.log as BetfairIntegrationLog, ...current].slice(0, 15));
+      }
+
+      if (!response.ok || payload.status === 'failed') {
+        throw new Error(payload.message || 'Betfair integration test failed.');
+      }
+    } catch (error) {
+      setBetfairStatus('failed');
+      setBetfairError(error instanceof Error ? error.message : 'Betfair integration test failed.');
+    } finally {
+      setBetfairActionLoading(null);
+    }
+  }
+
   if (loading) {
     return <div className="pt-16 min-h-screen flex items-center justify-center"><LoadingSpinner label="Loading admin panel..." /></div>;
   }
@@ -181,6 +308,12 @@ export function AdminPage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {loadError && (
+            <div className="col-span-full p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+              {loadError}
+            </div>
+          )}
+
           <div className="card p-5">
             <Users className="w-5 h-5 text-blue-400 mb-2" />
             <p className="text-2xl font-bold">{stats?.totalUsers ?? 0}</p>
@@ -323,9 +456,14 @@ export function AdminPage() {
                 <p className="text-sm font-semibold text-gray-200">Manage betting companies</p>
                 <p className="text-xs text-gray-500">Add, edit, and delete companies including logo uploads from one place.</p>
               </div>
-              <Link to="/admin/betting-companies" className="btn-primary text-sm self-start md:self-auto">
-                Open Management Module
-              </Link>
+              <div className="flex flex-wrap gap-2 self-start md:self-auto">
+                <Link to="/admin/integrations/health" className="btn-secondary text-sm">
+                  Open Integration Health
+                </Link>
+                <Link to="/admin/betting-companies" className="btn-primary text-sm">
+                  Open Management Module
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -344,6 +482,114 @@ export function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="card p-5">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="font-semibold text-gray-200">Bookmaker Integrations</h3>
+                  <p className="text-xs text-gray-500 mt-1">Provider diagnostics are admin-only and never return API keys, passwords, or tokens.</p>
+                </div>
+                <span className={
+                  betfairStatus === 'connected'
+                    ? 'badge-success text-xs'
+                    : betfairStatus === 'failed'
+                      ? 'badge-danger text-xs'
+                      : 'badge-warning text-xs'
+                }>
+                  {betfairStatus}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-[#0a0e1a] border border-[#1e293b]">
+                    <p className="text-xs text-gray-500">Provider</p>
+                    <p className="text-sm font-semibold text-gray-200">Betfair</p>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-[#0a0e1a] border border-[#1e293b]">
+                    <p className="text-xs text-gray-500 mb-2">Credential Status</p>
+                    <div className="space-y-2">
+                      {betfairCredentials.map((credential) => (
+                        <div key={credential.name} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-300 font-mono">{credential.name}</span>
+                          <span className={credential.present ? 'text-green-400' : 'text-red-400'}>
+                            {credential.present ? 'Present' : 'Missing'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      onClick={() => runBetfairIntegrationTest('auth')}
+                      disabled={betfairActionLoading !== null}
+                      className="btn-secondary text-xs px-3 py-2 disabled:opacity-50"
+                    >
+                      {betfairActionLoading === 'auth' ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : 'Test Authentication'}
+                    </button>
+                    <button
+                      onClick={() => runBetfairIntegrationTest('events')}
+                      disabled={betfairActionLoading !== null}
+                      className="btn-secondary text-xs px-3 py-2 disabled:opacity-50"
+                    >
+                      {betfairActionLoading === 'events' ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : 'Test Event Access'}
+                    </button>
+                    <button
+                      onClick={() => runBetfairIntegrationTest('markets')}
+                      disabled={betfairActionLoading !== null}
+                      className="btn-secondary text-xs px-3 py-2 disabled:opacity-50"
+                    >
+                      {betfairActionLoading === 'markets' ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : 'Test Market Access'}
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-[#0a0e1a] border border-[#1e293b] space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Events received</span>
+                      <span className="text-gray-200 font-medium">{betfairEventsReceived}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Markets received</span>
+                      <span className="text-gray-200 font-medium">{betfairMarketsReceived}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Last successful test</span>
+                      <span className="text-gray-200 font-medium">
+                        {betfairLastSuccessfulTest
+                          ? new Date(betfairLastSuccessfulTest).toLocaleString(language, { dateStyle: 'short', timeStyle: 'short' })
+                          : 'Not yet'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500">{betfairMessage}</p>
+                  {betfairError && <p className="text-xs text-red-400">{betfairError}</p>}
+                </div>
+
+                <div className="p-4 rounded-lg bg-[#0a0e1a] border border-[#1e293b]">
+                  <p className="text-sm font-semibold text-gray-200 mb-3">Integration Logs</p>
+                  <div className="space-y-2 max-h-[300px] overflow-auto pr-1">
+                    {betfairLogs.length === 0 && (
+                      <p className="text-xs text-gray-500">No integration test logs yet.</p>
+                    )}
+
+                    {betfairLogs.map((log, index) => (
+                      <div key={`${log.timestamp}:${index}`} className="rounded-md border border-[#1e293b] p-3 text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-gray-300 font-mono">{log.provider}</span>
+                          <span className={log.success === 'success' ? 'text-green-400' : 'text-red-400'}>{log.success}</span>
+                        </div>
+                        <p className="text-gray-400">Test: {log.testType}</p>
+                        <p className="text-gray-400">Error Category: {log.errorCategory ?? 'none'}</p>
+                        <p className="text-gray-500">{new Date(log.timestamp).toLocaleString(language, { dateStyle: 'short', timeStyle: 'short' })}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

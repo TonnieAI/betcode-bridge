@@ -1,11 +1,32 @@
-import { getDecoder } from './providers/registry';
+import { getAdapter } from './adapters';
 import type {
   BetCodeDecoder,
   BookmakerId,
   ConversionResult,
-  ConvertedSelection,
-  DecodedBetSlip,
 } from './types';
+
+function applyOddsComparison(selections: ConversionResult['selections']): ConversionResult['selections'] {
+  return selections.map((selection) => {
+    if (selection.destinationOdds == null) {
+      return {
+        ...selection,
+        oddsDifference: null,
+        oddsChangePercent: null,
+      };
+    }
+
+    const oddsDifference = +(selection.destinationOdds - selection.originalOdds).toFixed(2);
+    const oddsChangePercent = selection.originalOdds === 0
+      ? null
+      : +(((selection.destinationOdds - selection.originalOdds) / selection.originalOdds) * 100).toFixed(2);
+
+    return {
+      ...selection,
+      oddsDifference,
+      oddsChangePercent,
+    };
+  });
+}
 
 export async function convertBetCode(
   sourceBookmaker: BookmakerId,
@@ -18,86 +39,42 @@ export async function convertBetCode(
     throw new Error('Source and destination bookmaker must be different.');
   }
 
-  // Get source bookmaker decoder
-  const decoder = getDecoder(sourceBookmaker);
+  const sourceAdapter = getAdapter(sourceBookmaker);
 
-  if (!decoder) {
-    throw new Error(`No decoder registered for bookmaker: ${sourceBookmaker}`);
+  if (!sourceAdapter) {
+    throw new Error(`No adapter registered for bookmaker: ${sourceBookmaker}`);
   }
 
-  // Validate input code
-  if (!decoder.validateCode(code)) {
-    throw new Error(`Invalid bet code format for ${sourceBookmaker}.`);
+  const destinationAdapter = getAdapter(destinationBookmaker);
+
+  if (!destinationAdapter) {
+    throw new Error(`No adapter registered for bookmaker: ${destinationBookmaker}`);
   }
 
-
-  // Check code expiry if timestamp is available
-  const codeTimestamp = decoder.getCodeTimestamp?.(code);
-
-  if (codeTimestamp) {
-    const now = new Date();
-    const codeDate = new Date(codeTimestamp);
-
-    const diffInHours =
-      (now.getTime() - codeDate.getTime()) /
-      (1000 * 60 * 60);
-
-    if (diffInHours > 24) {
-      throw new Error(
-        'Bet code has expired. Codes are valid for 24 hours.'
-      );
-    }
-  }
-
-
-  // Get destination bookmaker encoder
-  const destinationDecoder = getDecoder(destinationBookmaker);
-
-  if (!destinationDecoder) {
+  if (!sourceAdapter.capability.canDecode) {
     throw new Error(
-      `No decoder registered for bookmaker: ${destinationBookmaker}`
+      `${sourceBookmaker} does not support decoding yet. Integration required: ${sourceAdapter.capability.requiredDataSource ?? 'official API/data source'}.`
     );
   }
 
+  if (!destinationAdapter.capability.canGenerateSlip) {
+    throw new Error(
+      `${destinationBookmaker} does not support destination slip generation yet. Integration required: ${destinationAdapter.capability.requiredDataSource ?? 'official API/data source'}.`
+    );
+  }
 
-  // Decode original bet slip
-  const decoded: DecodedBetSlip = await decoder.decode(code);
+  const decoded = await sourceAdapter.decodeBetCode(code);
+  const extractedSelections = sourceAdapter.extractSelections(decoded);
+  const eventNormalizedSelections = await sourceAdapter.normalizeEvents(extractedSelections, destinationBookmaker);
+  const marketNormalizedSelections = await sourceAdapter.normalizeMarkets(eventNormalizedSelections, destinationBookmaker);
+  const comparedSelections = await sourceAdapter.compareOdds(marketNormalizedSelections, destinationBookmaker);
+  const convertedSelections = applyOddsComparison(comparedSelections);
 
-
-  // Convert decoded selections into destination selections
-const convertedSelections: ConvertedSelection[] =
-  decoded.selections.map(selection => ({
-    fixture: selection.match,
-    league: selection.league,
-    kickoff: selection.kickoff,
-    market: selection.market,
-    selection: selection.selection,
-    originalOdds: selection.odds,
-    destinationOdds: selection.odds,
-    oddsDifference: 0,
-    oddsChangePercent: 0,
-    availability: 'available',
-    status: 'matched',
-    notes: '',
-  }));
-
-
-  /*
-    Future conversion logic goes here:
-
-    Example:
-
-    Bet9ja:
-       Chelsea vs Arsenal
-       Home Win
-
-    ↓
-
-    SportyBet:
-       Chelsea vs Arsenal
-       1
-
-  */
+  const matchedCount = convertedSelections.filter((selection) => selection.status === 'matched').length;
+  const unavailableCount = convertedSelections.filter((selection) => selection.status === 'unavailable').length;
+  const changedOddsCount = convertedSelections.filter((selection) => selection.status === 'odds_changed').length;
+  const marketChangedCount = convertedSelections.filter((selection) => selection.status === 'market_changed').length;
+  const destinationTotalOdds = +convertedSelections.reduce((acc, selection) => acc * (selection.destinationOdds ?? 1), 1).toFixed(2);
 
 
   // Return conversion result
@@ -107,26 +84,26 @@ const convertedSelections: ConvertedSelection[] =
 
   sourceCode: code.trim().toUpperCase(),
 
-  destinationCode: await destinationDecoder.encode(decoded.selections),
+  destinationCode: await destinationAdapter.generateBetSlip(extractedSelections, sourceBookmaker),
 
   selections: convertedSelections,
 
-  matchedCount: convertedSelections.length,
+  matchedCount,
 
-  unavailableCount: 0,
+  unavailableCount,
 
-  changedOddsCount: 0,
+  changedOddsCount,
 
-  marketChangedCount: 0,
+  marketChangedCount,
 
   originalTotalOdds: decoded.totalOdds,
 
-  destinationTotalOdds: decoded.totalOdds,
+  destinationTotalOdds,
 
   conversionPercentage:
-  decoded.selections.length === 0
+  extractedSelections.length === 0
     ? 0
-    : (convertedSelections.length / decoded.selections.length) * 100,
+    : (matchedCount / extractedSelections.length) * 100,
 
   createdAt: new Date().toISOString(),
 };

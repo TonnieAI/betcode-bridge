@@ -18,14 +18,21 @@ export function DashboardPage() {
   const [conversions, setConversions] = useState<ConversionRecord[]>([]);
   const [favorites, setFavorites] = useState<FavoritePair[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: convData }, { data: favData }] = await Promise.all([
+      setLoadError(null);
+      const [{ data: convData, error: convError }, { data: favData, error: favError }] = await Promise.all([
         supabase.from('conversions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
         supabase.from('favorites').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       ]);
+
+      if (convError || favError) {
+        setLoadError('Unable to load dashboard data right now. Please refresh.');
+      }
+
       setConversions((convData ?? []) as unknown as ConversionRecord[]);
       setFavorites((favData ?? []) as unknown as FavoritePair[]);
       setLoading(false);
@@ -65,8 +72,13 @@ export function DashboardPage() {
   const topLeagues = Object.entries(leagueCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
   async function removeFavorite(id: string) {
+    const previous = favorites;
     setFavorites(favorites.filter((f) => f.id !== id));
-    await supabase.from('favorites').delete().eq('id', id).eq('user_id', user?.id);
+    const { error } = await supabase.from('favorites').delete().eq('id', id).eq('user_id', user?.id);
+    if (error) {
+      setFavorites(previous);
+      setLoadError('Unable to update favorites right now. Please try again.');
+    }
   }
 
   if (loading) {
@@ -96,6 +108,12 @@ export function DashboardPage() {
         </div>
 
         {/* Plan usage banner */}
+        {loadError && (
+          <div className="mb-4 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+            {loadError}
+          </div>
+        )}
+
         <div className="card p-4 mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Zap className="w-5 h-5 gold-text" />

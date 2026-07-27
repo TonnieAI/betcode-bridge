@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeftRight, Twitter, Facebook, Instagram } from 'lucide-react';
-import { getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
+import { buildFallbackCatalog, getGlobalBookmakers, type GlobalBookmaker } from '@/services/bookmakerCatalogService';
 
 export function Footer() {
   const [bookmakers, setBookmakers] = useState<GlobalBookmaker[]>([]);
@@ -14,10 +14,11 @@ export function Footer() {
       try {
         const records = await getGlobalBookmakers(true);
         if (!mounted) return;
-        setBookmakers(records.slice(0, 6));
+        const source = records.length > 0 ? records : buildFallbackCatalog();
+        setBookmakers(source.slice(0, 6));
       } catch {
         if (!mounted) return;
-        setBookmakers([]);
+        setBookmakers(buildFallbackCatalog().slice(0, 6));
       }
     })();
 

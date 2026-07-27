@@ -1,28 +1,83 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { getCountryOption } from '@/lib/geo';
+import { clearPendingCheckout, getPendingCheckout } from '@/lib/pendingCheckout';
+import { supabase } from '@/lib/supabase';
+import { createCheckoutSession } from '@/services/subscriptionService';
 import { ArrowLeftRight, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const shouldResumeCheckout = searchParams.get('checkout') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  async function resumeCheckoutAfterAuth() {
+    const pending = getPendingCheckout();
+    if (!pending) {
+      navigate('/dashboard');
+      return;
+    }
+
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+
+    let country = 'US';
+    let currency = getCountryOption(country).defaultCurrency;
+
+    if (userId) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('country,currency')
+        .eq('id', userId)
+        .maybeSingle();
+
+      country = profileData?.country || country;
+      currency = profileData?.currency || getCountryOption(country).defaultCurrency;
+    }
+
+    const paymentProvider = getCountryOption(country).preferredPaymentProvider;
+    const session = await createCheckoutSession(pending.planId, pending.billingCycle, {
+      country,
+      currency,
+      paymentProvider,
+    });
+
+    clearPendingCheckout();
+    window.location.href = session.authorizationUrl;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-    if (error) {
-      setError(error);
-    } else {
-      navigate('/dashboard');
+    const { error: signInError } = await signIn(email, password);
+
+    if (signInError) {
+      setLoading(false);
+      setError(signInError);
+      return;
     }
+
+    if (shouldResumeCheckout) {
+      try {
+        await resumeCheckoutAfterAuth();
+        return;
+      } catch (checkoutError) {
+        setLoading(false);
+        setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to continue checkout.');
+        return;
+      }
+    }
+
+    setLoading(false);
+    navigate('/dashboard');
   }
 
   return (
@@ -91,7 +146,7 @@ export function LoginPage() {
 
         <p className="text-sm text-gray-400 text-center mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="gold-text hover:underline">Sign up</Link>
+          <Link to={shouldResumeCheckout ? '/register?checkout=1' : '/register'} className="gold-text hover:underline">Sign up</Link>
         </p>
       </div>
     </div>
