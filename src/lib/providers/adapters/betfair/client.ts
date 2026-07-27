@@ -13,7 +13,14 @@ import type {
   BetfairOddsComparison,
   BetfairOperationResult,
 } from './types.js';
-import { mapBetfairEvents, mapBetfairMarketBook, mapBetfairMarkets } from './mapper.js';
+import {
+  mapBetfairEvents,
+  mapBetfairMarketBook,
+  mapBetfairMarkets,
+  type RawBetfairEventEntry,
+  type RawBetfairMarketBookEntry,
+  type RawBetfairMarketEntry,
+} from './mapper.js';
 
 interface BetfairProbeState {
   authenticated: boolean;
@@ -257,7 +264,7 @@ export class BetfairAdapterClient {
   }
 
   async getEvents(): Promise<BetfairOperationResult<BetfairEvent[]>> {
-    const result = await this.callJsonRpc<Array<{ event: { id: string; name: string; countryCode?: string; openDate?: string }; competition?: { name?: string } }>>(
+    const result = await this.callJsonRpc<RawBetfairEventEntry[]>(
       'SportsAPING/v1.0/listEvents',
       {
         filter: {
@@ -284,7 +291,7 @@ export class BetfairAdapterClient {
   }
 
   async getMarkets(eventIds: string[]): Promise<BetfairOperationResult<BetfairMarket[]>> {
-    const result = await this.callJsonRpc<Array<{ marketId: string; marketName: string; event?: { id: string }; runners?: Array<{ selectionId: number; runnerName: string }> }>>(
+    const result = await this.callJsonRpc<RawBetfairMarketEntry[]>(
       'SportsAPING/v1.0/listMarketCatalogue',
       {
         filter: {
@@ -312,7 +319,7 @@ export class BetfairAdapterClient {
   }
 
   async getMarketBook(marketIds: string[]): Promise<BetfairOperationResult<BetfairMarketBookEntry[]>> {
-    const result = await this.callJsonRpc<Array<{ marketId: string; runners?: Array<{ selectionId: number; ex?: { availableToBack?: Array<{ price: number }> } }> }>>(
+    const result = await this.callJsonRpc<RawBetfairMarketBookEntry[]>(
       'SportsAPING/v1.0/listMarketBook',
       {
         marketIds,

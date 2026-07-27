@@ -43,7 +43,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const client = new BetfairAdapterClient();
   const authResult = await client.login();
 
-  if (!authResult.ok) {
+  if (authResult.ok === false) {
     const responseTimeMs = Date.now() - startedAt;
     const log = await writeIntegrationLog({
       provider: 'betfair',
@@ -69,7 +69,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const eventsResult = await client.getEvents();
 
-  if (!eventsResult.ok) {
+  if (eventsResult.ok === false) {
     const responseTimeMs = Date.now() - startedAt;
     const log = await writeIntegrationLog({
       provider: 'betfair',
@@ -96,7 +96,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const eventIds = eventsResult.data.slice(0, 25).map((event) => event.eventId);
   const marketsResult = await client.getMarkets(eventIds);
 
-  if (!marketsResult.ok) {
+  if (marketsResult.ok === false) {
     const responseTimeMs = Date.now() - startedAt;
     const log = await writeIntegrationLog({
       provider: 'betfair',

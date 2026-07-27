@@ -9,19 +9,19 @@ import { normalizeBetfairEvents, normalizeBetfairMarkets } from './normalizer.js
 
 const SUPPORTED_MARKETS = new Set(['MATCH_ODDS', 'OVER_UNDER_25', 'BOTH_TEAMS_TO_SCORE']);
 
-type RawBetfairEventEntry = {
+export type RawBetfairEventEntry = {
   event: { id: string; name: string; countryCode?: string; openDate?: string };
   competition?: { name?: string };
 };
 
-type RawBetfairMarketEntry = {
+export type RawBetfairMarketEntry = {
   marketId: string;
   marketName: string;
   event?: { id: string };
   runners?: Array<{ selectionId: number; runnerName: string }>;
 };
 
-type RawBetfairMarketBookEntry = {
+export type RawBetfairMarketBookEntry = {
   marketId: string;
   runners?: Array<{ selectionId: number; ex?: { availableToBack?: Array<{ price: number }> } }>;
 };

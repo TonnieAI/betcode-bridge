@@ -43,7 +43,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const client = new BetfairAdapterClient();
   const authResult = await client.login();
 
-  if (!authResult.ok) {
+  if (authResult.ok === false) {
     const responseTimeMs = Date.now() - startedAt;
     const log = await writeIntegrationLog({
       provider: 'betfair',
