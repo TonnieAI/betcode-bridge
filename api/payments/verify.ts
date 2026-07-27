@@ -72,6 +72,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       });
 
       if (!consistency.ok) {
+        const rejectReason = consistency.reason;
+
         console.error('api_error', {
           endpoint: 'payments/verify',
           errorType: 'gateway_consistency_failed',
@@ -89,7 +91,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         .update({
           status: 'failed',
           metadata: {
-            reject_reason: consistency.reason,
+            reject_reason: rejectReason,
             verify_source: 'verify_endpoint',
           },
         })

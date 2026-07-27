@@ -6,8 +6,12 @@ export interface ApiRequest extends IncomingMessage {
   body?: unknown;
 }
 
+interface ApiJsonResponder {
+  json: (payload: unknown) => void;
+}
+
 export interface ApiResponse {
-  status?: (code: number) => ApiResponse;
+  status?: (code: number) => ApiJsonResponder;
   json?: (payload: unknown) => void;
   setHeader?: (name: string, value: string) => void;
   end?: (body?: string) => void;
@@ -31,7 +35,7 @@ export function createHttpError(status: number, message: string, code?: string):
 }
 
 export function sendJson(res: ApiResponse, status: number, payload: unknown) {
-  if (typeof res.status === 'function' && typeof res.json === 'function') {
+  if (typeof res.status === 'function') {
     res.status(status).json(payload);
     return;
   }
