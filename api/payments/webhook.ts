@@ -166,7 +166,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       gatewayMetadata: transaction.metadata ?? undefined,
     });
 
-      if (!consistency.ok) {
+      if (consistency.ok === false) {
         const rejectReason = consistency.reason;
 
         console.error('api_error', {

@@ -1,10 +1,10 @@
-import type { BetSelection } from '../../../normalizedBetting';
+import type { BetSelection } from '../../../normalizedBetting.js';
 import {
   normalizeLeagueName,
   normalizeMarketName,
   normalizeSelectionName,
   normalizeTeamName,
-} from '../../../matching/eventMatchingService';
+} from '../../../matching/eventMatchingService.js';
 
 const BETFAIR_MARKET_ALIASES: Record<string, string> = {
   'match odds': 'match winner',

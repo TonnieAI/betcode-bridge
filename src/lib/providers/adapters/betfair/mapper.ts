@@ -1,11 +1,11 @@
-import type { BetSelection } from '../../../normalizedBetting';
+import type { BetSelection } from '../../../normalizedBetting.js';
 import type {
   BetfairEvent,
   BetfairMappedSelection,
   BetfairMarket,
   BetfairMarketBookEntry,
-} from './types';
-import { normalizeBetfairEvents, normalizeBetfairMarkets } from './normalizer';
+} from './types.js';
+import { normalizeBetfairEvents, normalizeBetfairMarkets } from './normalizer.js';
 
 const SUPPORTED_MARKETS = new Set(['MATCH_ODDS', 'OVER_UNDER_25', 'BOTH_TEAMS_TO_SCORE']);
 

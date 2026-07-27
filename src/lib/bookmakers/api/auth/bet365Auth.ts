@@ -1,4 +1,4 @@
-import { validateProviderCredentials } from '../bookmakerApiClient';
+import { validateProviderCredentials } from '../bookmakerApiClient.js';
 
 const BET365_REQUIRED_ENV = ['BET365_API_KEY', 'BET365_API_SECRET'];
 

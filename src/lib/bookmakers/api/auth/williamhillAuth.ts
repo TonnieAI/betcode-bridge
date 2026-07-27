@@ -1,4 +1,4 @@
-import { validateProviderCredentials } from '../bookmakerApiClient';
+import { validateProviderCredentials } from '../bookmakerApiClient.js';
 
 const WILLIAMHILL_REQUIRED_ENV = ['WILLIAMHILL_API_KEY', 'WILLIAMHILL_API_SECRET'];
 

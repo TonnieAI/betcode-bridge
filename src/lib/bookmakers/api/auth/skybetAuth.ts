@@ -1,4 +1,4 @@
-import { validateProviderCredentials } from '../bookmakerApiClient';
+import { validateProviderCredentials } from '../bookmakerApiClient.js';
 
 const SKYBET_REQUIRED_ENV = ['SKYBET_API_KEY', 'SKYBET_API_SECRET'];
 

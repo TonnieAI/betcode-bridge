@@ -1,4 +1,4 @@
-import type { BetSelection } from '../normalizedBetting';
+import type { BetSelection } from '../normalizedBetting.js';
 
 const TEAM_ALIASES: Record<string, string> = {
   'man utd': 'manchester united',

@@ -3,7 +3,7 @@ import {
   getBetfairCredentialDiagnostics,
   getBetfairCredentials,
   getBetfairMissingCredentialKeys,
-} from './auth';
+} from './auth.js';
 import type {
   BetfairAuthResponse,
   BetfairCapabilityResult,
@@ -12,8 +12,8 @@ import type {
   BetfairMarketBookEntry,
   BetfairOddsComparison,
   BetfairOperationResult,
-} from './types';
-import { mapBetfairEvents, mapBetfairMarketBook, mapBetfairMarkets } from './mapper';
+} from './types.js';
+import { mapBetfairEvents, mapBetfairMarketBook, mapBetfairMarkets } from './mapper.js';
 
 interface BetfairProbeState {
   authenticated: boolean;

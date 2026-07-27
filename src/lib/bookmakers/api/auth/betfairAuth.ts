@@ -1,4 +1,4 @@
-import { validateProviderCredentials } from '../bookmakerApiClient';
+import { validateProviderCredentials } from '../bookmakerApiClient.js';
 
 const BETFAIR_REQUIRED_ENV = ['BETFAIR_APP_KEY', 'BETFAIR_USERNAME', 'BETFAIR_PASSWORD'];
 

@@ -71,7 +71,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         gatewayMetadata: verification.metadata ?? undefined,
       });
 
-      if (!consistency.ok) {
+      if (consistency.ok === false) {
         const rejectReason = consistency.reason;
 
         console.error('api_error', {
