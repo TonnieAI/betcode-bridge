@@ -275,8 +275,13 @@ export class BetfairAdapterClient {
       },
     );
 
-    if (!result.ok) {
-      return result;
+    if (result.ok === false) {
+      return {
+        ok: false,
+        reason: result.reason,
+        missingRequirements: result.missingRequirements,
+        availability: result.availability,
+      };
     }
 
     this.probeState = {
@@ -303,8 +308,13 @@ export class BetfairAdapterClient {
       },
     );
 
-    if (!result.ok) {
-      return result;
+    if (result.ok === false) {
+      return {
+        ok: false,
+        reason: result.reason,
+        missingRequirements: result.missingRequirements,
+        availability: result.availability,
+      };
     }
 
     this.probeState = {
@@ -329,8 +339,13 @@ export class BetfairAdapterClient {
       },
     );
 
-    if (!result.ok) {
-      return result;
+    if (result.ok === false) {
+      return {
+        ok: false,
+        reason: result.reason,
+        missingRequirements: result.missingRequirements,
+        availability: result.availability,
+      };
     }
 
     return {
