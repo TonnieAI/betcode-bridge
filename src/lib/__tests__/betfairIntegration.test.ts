@@ -40,6 +40,7 @@ test('missing credentials are blocked with integration_required status', async (
   assert.equal(login.ok, false);
   if (!login.ok) {
     assert.equal(login.availability, 'integration_required');
+    assert.ok(login.missingRequirements);
     assert.deepEqual(login.missingRequirements.sort(), ['BETFAIR_APP_KEY', 'BETFAIR_PASSWORD', 'BETFAIR_USERNAME']);
   }
 });

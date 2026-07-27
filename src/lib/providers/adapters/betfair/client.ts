@@ -119,8 +119,13 @@ export class BetfairAdapterClient {
   private async callJsonRpc<T>(method: string, params: Record<string, unknown>): Promise<BetfairOperationResult<T>> {
     if (!this.sessionToken) {
       const loginResult = await this.login();
-      if (!loginResult.ok) {
-        return loginResult;
+      if (loginResult.ok === false) {
+        return {
+          ok: false,
+          reason: loginResult.reason,
+          missingRequirements: loginResult.missingRequirements,
+          availability: loginResult.availability,
+        };
       }
     }
 
@@ -372,18 +377,24 @@ export class BetfairAdapterClient {
 
   async runCapabilityProbe(): Promise<BetfairCapabilityResult> {
     const loginResult = await this.login();
-    if (!loginResult.ok) {
+    if (loginResult.ok === false) {
+      const missingRequirements = loginResult.missingRequirements ?? [];
       return {
-        availability: loginResult.availability,
+        availability: loginResult.availability === 'full'
+          || loginResult.availability === 'partial'
+          || loginResult.availability === 'integration_required'
+          || loginResult.availability === 'unavailable'
+          ? loginResult.availability
+          : 'integration_required',
         requiresAPI: true,
-        missingRequirements: loginResult.missingRequirements.length > 0
-          ? loginResult.missingRequirements
+        missingRequirements: missingRequirements.length > 0
+          ? missingRequirements
           : [loginResult.reason],
       };
     }
 
     const eventsResult = await this.getEvents();
-    if (!eventsResult.ok) {
+    if (eventsResult.ok === false) {
       return {
         availability: 'integration_required',
         requiresAPI: true,
@@ -392,7 +403,7 @@ export class BetfairAdapterClient {
     }
 
     const marketResult = await this.getMarkets(eventsResult.data.slice(0, 10).map((event) => event.eventId));
-    if (!marketResult.ok) {
+    if (marketResult.ok === false) {
       return {
         availability: 'integration_required',
         requiresAPI: true,

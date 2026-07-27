@@ -43,7 +43,12 @@ export interface BetfairCapabilityResult {
 
 export type BetfairOperationResult<T> =
   | { ok: true; data: T }
-  | { ok: false; availability: ConversionAvailability; reason: string; missingRequirements: string[] };
+  | {
+    ok: false;
+    reason: string;
+    missingRequirements?: string[];
+    availability?: string;
+  };
 
 export interface BetfairMappedSelection extends BetSelection {
   event: BetEvent;

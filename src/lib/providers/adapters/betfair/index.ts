@@ -41,13 +41,14 @@ export function getBetfairCapability(): BookmakerCapability {
   };
 }
 
-function ensureOk<T>(result: { ok: true; data: T } | { ok: false; reason: string; missingRequirements: string[] }): T {
+function ensureOk<T>(result: { ok: true; data: T } | { ok: false; reason: string; missingRequirements?: string[] }): T {
   if (result.ok) {
     return result.data;
   }
 
-  const details = result.missingRequirements.length > 0
-    ? ` Missing requirements: ${result.missingRequirements.join(', ')}`
+  const missingRequirements = result.missingRequirements ?? [];
+  const details = missingRequirements.length > 0
+    ? ` Missing requirements: ${missingRequirements.join(', ')}`
     : '';
   throw new Error(`${result.reason}.${details}`);
 }
