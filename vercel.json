@@ -4,6 +4,38 @@
       "handle": "filesystem"
     },
     {
+      "src": "/api/admin/integrations/betfair/test-auth",
+      "dest": "/api/admin/integrations/betfair?action=auth"
+    },
+    {
+      "src": "/api/admin/integrations/betfair/test-events",
+      "dest": "/api/admin/integrations/betfair?action=events"
+    },
+    {
+      "src": "/api/admin/integrations/betfair/test-markets",
+      "dest": "/api/admin/integrations/betfair?action=markets"
+    },
+    {
+      "src": "/api/admin/integrations/health",
+      "dest": "/api/admin/integrations/betfair?action=health"
+    },
+    {
+      "src": "/api/payments/checkout",
+      "dest": "/api/payments?action=checkout"
+    },
+    {
+      "src": "/api/payments/verify",
+      "dest": "/api/payments?action=verify"
+    },
+    {
+      "src": "/api/payments/webhook",
+      "dest": "/api/payments?action=webhook"
+    },
+    {
+      "src": "/api/payments/overview",
+      "dest": "/api/payments?action=overview"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

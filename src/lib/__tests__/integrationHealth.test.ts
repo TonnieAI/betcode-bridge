@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import healthHandler from '../../../api/admin/integrations/health';
+import healthHandler from '../../../api/admin/integrations/betfair';
 import { buildProviderHealth, determineHealthStatus, type IntegrationHealthLogRow } from '../../../api/admin/integrations/healthModel';
 import { getBetfairAuthDiagnostics } from '../bookmakers/api/auth/betfairAuth';
 import { convertBetCode } from '../conversionEngine';
@@ -30,6 +30,7 @@ test('admin-only access is enforced for integration health endpoint', async () =
   const req = {
     method: 'GET',
     headers: {},
+    url: '/api/admin/integrations/betfair?action=health',
   };
   const res = createMockResponse();
 

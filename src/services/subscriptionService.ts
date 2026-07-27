@@ -56,7 +56,11 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
   const responseText = await response.text();
   const contentType = response.headers.get('content-type') || 'unknown';
   const bodyPreview = responseText.slice(0, 200);
-  const endpoint = new URL(response.url, window.location.origin).pathname;
+  const parsedUrl = new URL(response.url, window.location.origin);
+  const action = parsedUrl.searchParams.get('action');
+  const endpoint = parsedUrl.pathname === '/api/payments' && action
+    ? `/api/payments/${action}`
+    : parsedUrl.pathname;
 
   const fallbackMessageByEndpoint: Record<string, string> = {
     '/api/payments/checkout': 'Unable to start checkout. Please try again.',
@@ -149,7 +153,7 @@ export async function createCheckoutSession(
   context: CheckoutContext = {},
 ): Promise<CheckoutResponse> {
   const headers = await getAuthHeaders();
-  const response = await fetch('/api/payments/checkout', {
+  const response = await fetch('/api/payments?action=checkout', {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -169,7 +173,7 @@ export async function createCheckoutSession(
 
 export async function verifyPaymentReference(reference: string): Promise<VerifyResponse> {
   const headers = await getAuthHeaders();
-  const response = await fetch('/api/payments/verify', {
+  const response = await fetch('/api/payments?action=verify', {
     method: 'POST',
     headers,
     body: JSON.stringify({ reference }),
@@ -191,7 +195,7 @@ export async function cancelCurrentSubscription(subscriptionId?: string): Promis
 
 export async function getSubscriptionOverview() {
   const headers = await getAuthHeaders();
-  const response = await fetch('/api/payments/overview', {
+  const response = await fetch('/api/payments?action=overview', {
     method: 'GET',
     headers: {
       Authorization: headers.Authorization,

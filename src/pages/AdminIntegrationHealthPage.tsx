@@ -73,7 +73,7 @@ export function AdminIntegrationHealthPage() {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      const response = await fetch('/api/admin/integrations/health', {
+      const response = await fetch('/api/admin/integrations/betfair?action=health', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

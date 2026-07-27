@@ -222,9 +222,9 @@ export function AdminPage() {
     setBetfairError(null);
 
     const endpointByAction: Record<BetfairIntegrationAction, string> = {
-      auth: '/api/admin/integrations/betfair/test-auth',
-      events: '/api/admin/integrations/betfair/test-events',
-      markets: '/api/admin/integrations/betfair/test-markets',
+      auth: '/api/admin/integrations/betfair?action=auth',
+      events: '/api/admin/integrations/betfair?action=events',
+      markets: '/api/admin/integrations/betfair?action=markets',
     };
 
     try {
